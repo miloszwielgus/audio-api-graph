@@ -1,5 +1,5 @@
 import { useAtom, useSetAtom } from "jotai";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -9,7 +9,7 @@ import Animated, {
 import { Connectable } from "@/components/Connectable";
 import { NodeTranslateCtx } from "@/components/NodeTranslateContext";
 import { NodeRegistry } from "@/runtime/nodeRegistry";
-import { graphNodesAtom, removeNodeAtom, topNodeAtom, updateNodePositionAtom } from "@/stores";
+import { removeNodeAtom, topNodeAtom, updateNodeDataAtom, updateNodePositionAtom } from "@/stores";
 import type { GraphNode } from "@/stores/graphDataAtoms";
 
 interface GraphNodeViewProps {
@@ -17,15 +17,15 @@ interface GraphNodeViewProps {
 }
 
 export function GraphNodeView({ node }: GraphNodeViewProps) {
-  const { id, type, x, y, data } = node;
+  const { id, type, x, y } = node;
   const positionX = useSharedValue(x);
   const positionY = useSharedValue(y);
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const [topNode, setTopNode] = useAtom(topNodeAtom);
-  const setNodes = useSetAtom(graphNodesAtom);
   const removeNode = useSetAtom(removeNodeAtom);
-  const setNodePosition = useSetAtom(updateNodePositionAtom)
+  const setNodePosition = useSetAtom(updateNodePositionAtom);
+ // const updateNodeData = useSetAtom(updateNodeDataAtom);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
@@ -37,10 +37,9 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
       positionX.value = startX.value + e.translationX;
       positionY.value = startY.value + e.translationY;
     })
-  .onEnd(() => {
-    runOnJS(setNodePosition)({ id, x: positionX.value, y: positionY.value });
-  });
-
+    .onEnd(() => {
+      runOnJS(setNodePosition)({ id, x: positionX.value, y: positionY.value });
+    });
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -53,14 +52,6 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
   if (!nodeImpl) {
     throw new Error(`Node type "${type}" not found in registry`);
   }
-
-  const handleValueChange = (newValue: string) => {
-    setNodes((prevNodes) =>
-      prevNodes.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, value: newValue } } : n
-      )
-    );
-  };
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -107,15 +98,6 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
               </View>
             )}
           </View>
-
-          {node.type === "constant" && (
-            <TextInput
-              style={styles.inputField}
-              value={data?.value?.toString() ?? "1.0"}
-              onChangeText={handleValueChange}
-              keyboardType="numeric"
-            />
-          )}
         </Animated.View>
       </NodeTranslateCtx.Provider>
     </GestureDetector>
@@ -151,7 +133,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    minHeight: 40, // Ensure nodes have a minimum height
+    minHeight: 40, 
   },
   inputsContainer: {
     alignItems: "flex-start",
@@ -179,7 +161,7 @@ const styles = StyleSheet.create({
   removeButton: {
     position: "absolute",
     top: -8,
-    right: -8, // Positioned to the top-right for better aesthetics
+    right: -8, 
     backgroundColor: "#ff3b30",
     width: 20,
     height: 20,
@@ -193,7 +175,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 12,
     lineHeight: 12,
-    marginTop: -1, // Pixel-perfect centering
+    marginTop: -1, 
   },
 });
-

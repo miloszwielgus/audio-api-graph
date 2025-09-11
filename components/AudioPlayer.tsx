@@ -9,6 +9,7 @@ export function AudioPlayer() {
   const playSound = () => {
     if (compiledGraph && typeof compiledGraph.play === 'function') {
       compiledGraph.play(audioContext.currentTime);
+      compiledGraph.stop(audioContext.currentTime + 2); // Play for 2 seconds
       console.log("pozdro dla chlopakow")
     } else {
       console.warn("The audio graph is not compiled yet or is invalid.");

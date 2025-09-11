@@ -10,7 +10,9 @@ export default function MainScreen() {
   return (
     <View style={styles.container}>
       <Canvas>
-        {nodes.map((node) => <GraphNodeView key={node.id} node={node} />)}
+              {(nodes ?? []).map((node) => (
+        <GraphNodeView key={node.id} node={node} />
+      ))}
       </Canvas>
     </View>
   );
