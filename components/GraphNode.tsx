@@ -1,23 +1,21 @@
 // GraphNodeView.tsx
-import React from "react";
+import Slider from "@react-native-community/slider";
 import { useAtom, useSetAtom } from "jotai";
+import React from "react";
 import {
   Pressable,
   StyleSheet,
   Text,
   View,
-  Modal,
-  ScrollView,
-  TouchableOpacity,
 } from "react-native";
+import DropDownPicker from 'react-native-dropdown-picker';
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withTiming,
 } from "react-native-reanimated";
-import Slider from "@react-native-community/slider";
-import { Picker } from "@react-native-picker/picker";
 
 import { Connectable } from "@/components/Connectable";
 import { NodeTranslateCtx } from "@/components/NodeTranslateContext";
@@ -30,63 +28,148 @@ interface GraphNodeViewProps {
   node: GraphNode;
 }
 
+const capitalize = (s: string) => {
+  if (typeof s !== 'string' || s.length === 0) {
+    return '';
+  }
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+
+const ExpandedParametersView = React.memo(({ node, nodeImpl, isInteracting }: any) => {
+  const { id, data } = node;
+  const updateNodeData = useSetAtom(updateNodeDataAtom);
+
+  const [openPicker, setOpenPicker] = React.useState<string | null>(null);
+
+  return (
+    <View
+      style={styles.parametersScrollView}
+    >
+      {(nodeImpl.parameters ?? []).map((param: any) => {
+        const currentValue = data[param.name] ?? (param as any).defaultValue;
+        if (param.type === "slider") {
+          const s = param as SliderParameter;
+          const min = s.min ?? 0;
+          const max = s.max ?? 1;
+          const step = s.step ?? ((Math.abs(max - min) / 100) || 0.01);
+          const numericValue = Number(currentValue);
+          return (
+            <View key={param.name} style={styles.param}>
+              <View style={styles.paramHeader}>
+                <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
+                <Text style={styles.paramValue}>
+                  {Number.isFinite(numericValue) ? numericValue.toFixed(3) : String(currentValue)}
+                </Text>
+              </View>
+              <Slider
+                style={styles.slider}
+                minimumValue={min}
+                maximumValue={max}
+                step={step}
+                value={numericValue}
+                onSlidingStart={() => { isInteracting.value = 1; }}
+                onValueChange={(val) => updateNodeData({ nodeId: id, key: param.name, value: val })}
+                onSlidingComplete={() => { isInteracting.value = 0; }}
+                thumbTintColor="#e0e0e0"
+                minimumTrackTintColor="#a56de2"
+                maximumTrackTintColor="#555"
+              />
+            </View>
+          );
+        } else { // selector
+                    const s = param as SelectorParameter<string>;
+          const items = (s.options ?? []).map(opt => ({ label: opt, value: opt }));
+          const currentValue = data[param.name] ?? s.defaultValue;
+
+          return (
+            <View key={param.name} style={[styles.param, { zIndex: 100 }]}>
+              <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
+              <View style={styles.dropdownWrapper}>
+                <DropDownPicker
+                  open={openPicker === param.name}
+                  value={currentValue}
+                  items={items}
+                  listMode="FLATLIST"
+                  setOpen={() => setOpenPicker(openPicker === param.name ? null : param.name)}
+                  setValue={(callback) => {
+                    const value = callback(currentValue); // Get the new value
+                    updateNodeData({ nodeId: id, key: param.name, value });
+                  }}
+                  // Styling props
+                  theme="DARK"
+                  style={styles.dropdown}
+                  containerStyle={styles.dropdownContainer}
+                  dropDownContainerStyle={styles.dropdownList}
+                  listItemLabelStyle={styles.dropdownListItemLabel}
+                  placeholder="Select an item"
+                />
+              </View>
+            </View>
+          );
+        }
+      })}
+    </View>
+  );
+});
+
+ExpandedParametersView.displayName = 'ExpandedParametersView';
+
+
 export function GraphNodeView({ node }: GraphNodeViewProps) {
-  const { id, type, x, y, data } = node;
-  // Interaction context: present if Canvas provided it (keeps compatibility)
+  const { id, type, x, y } = node;
   const interactionCtx = React.useContext(InteractionContext);
   if (!interactionCtx) { throw new Error("GraphNodeView must be used within an InteractionContext provider"); }
   
-  // fallback local shared value (safe if context was removed)
-  const isInteracting = interactionCtx?.isInteracting;
+  const isInteracting = interactionCtx.isInteracting;
 
   const positionX = useSharedValue(x);
   const positionY = useSharedValue(y);
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
 
-  const [isModalOpen, setModalOpen] = React.useState(false);
+  const [isExpanded, setExpanded] = React.useState(false);
 
   const [topNode, setTopNode] = useAtom(topNodeAtom);
   const removeNode = useSetAtom(removeNodeAtom);
   const setNodePosition = useSetAtom(updateNodePositionAtom);
-  const updateNodeData = useSetAtom(updateNodeDataAtom);
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
-      if (isInteracting?.value === 1) return;
+      //if (isInteracting?.value === 1) return;
       runOnJS(setTopNode)(id);
       startX.value = positionX.value;
       startY.value = positionY.value;
     })
     .onUpdate((e) => {
-      if (isInteracting?.value === 1) return;
+      //if (isInteracting?.value === 1 || isExpanded) return;
       positionX.value = startX.value + e.translationX;
       positionY.value = startY.value + e.translationY;
     })
     .onEnd(() => {
-      if (isInteracting?.value === 1) return;
+      //if (isInteracting?.value === 1 || isExpanded) return;
       runOnJS(setNodePosition)({ id, x: positionX.value, y: positionY.value });
     });
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: positionX.value },
-      { translateY: positionY.value },
-    ],
-  }));
+  
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: positionX.value },
+        { translateY: positionY.value },
+      ],
+      width: withTiming(isExpanded ? 300 : 220, { duration: 250 }),
+      height: withTiming(isExpanded ? 350 : 120, { duration: 250 }),
+    };
+  });
 
   const nodeImpl = NodeRegistry.get(type);
   if (!nodeImpl) {
     throw new Error(`Node type "${type}" not found in registry`);
   }
 
-  const openModal = () => {
-    isInteracting.value = 1;
-    setModalOpen(true);
-  };
-  const closeModal = () => {
-    setModalOpen(false);
-    isInteracting.value = 0;
+  const handleLongPress = () => {
+    setTopNode(id);
+    setExpanded(!isExpanded);
   };
 
   return (
@@ -102,10 +185,10 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
           <View style={styles.header}>
             {type !== "AudioDestination" && (
               <Pressable
-                style={styles.removeButton}
+                style={styles.removeButton} 
                 onPress={() => removeNode(id)}
               >
-                <Text style={styles.removeButtonText}>X</Text>
+                <Text style={styles.removeButtonText}>×</Text>
               </Pressable>
             )}
 
@@ -117,7 +200,7 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
 
         <Pressable
           style={styles.bodyPressable}
-          onLongPress={openModal}
+          onLongPress={handleLongPress}
           android_ripple={{ color: "#333", borderless: false }}
         >
           <View style={styles.nodeBody}>
@@ -147,99 +230,19 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
           </View>
 
           <View style={styles.hintRow}>
-            <Text style={styles.hintText}>Long-press to edit</Text>
+            <Text style={styles.hintText}>
+              Long-press to {isExpanded ? "collapse" : "edit"}
+            </Text>
           </View>
         </Pressable>
 
-        <Modal
-          visible={isModalOpen}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={closeModal}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{nodeImpl.type}</Text>
-                <TouchableOpacity onPress={closeModal} style={styles.modalClose}>
-                  <Text style={styles.modalCloseText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                contentContainerStyle={styles.modalBody}
-                keyboardShouldPersistTaps="handled"
-              >
-                <View style={styles.modalPorts}>
-                  <View style={styles.modalPortList}>
-                    {nodeImpl.inputs?.map((inpt) => (
-                      <Text key={inpt.name} style={styles.modalPortText}>In: {inpt.name}</Text>
-                    ))}
-                  </View>
-                  <View style={styles.modalPortList}>
-                    {nodeImpl.outputs?.map((outp) => (
-                      <Text key={outp.name} style={styles.modalPortText}>Out: {outp.name}</Text>
-                    ))}
-                  </View>
-                </View>
-
-                {(nodeImpl.parameters ?? []).map((param) => {
-                  const currentValue = data[param.name] ?? (param as any).defaultValue;
-                  if (param.type === "slider") {
-                    const s = param as SliderParameter;
-                    const min = s.min ?? 0;
-                    const max = s.max ?? 1;
-                    const step = s.step ?? ((Math.abs(max - min) / 100) || 0.01);
-                    const numericValue = Number(currentValue);
-                    return (
-                      <View key={param.name} style={styles.modalParam}>
-                        <View style={styles.modalParamHeader}>
-                          <Text style={styles.modalParamLabel}>{param.name}</Text>
-                          <Text style={styles.modalParamValue}>
-                            {Number.isFinite(numericValue) ? numericValue.toFixed(3) : String(currentValue)}
-                          </Text>
-                        </View>
-
-                        <Slider
-                          style={styles.modalSlider}
-                          minimumValue={min}
-                          maximumValue={max}
-                          step={step}
-                          value={numericValue}
-                          onSlidingStart={() => { isInteracting.value = 1; }}
-                          onValueChange={(val) => updateNodeData({ nodeId: id, key: param.name, value: val })}
-                          onSlidingComplete={(val) => { isInteracting.value = 0; updateNodeData({ nodeId: id, key: param.name, value: val }); }}
-                          thumbTintColor="#fff"
-                        />
-                      </View>
-                    );
-                  } else { 
-                    const s = param as SelectorParameter<string>;
-                    const options = s.options ?? [];
-                    return (
-                      <View key={param.name} style={styles.modalParam}>
-                        <Text style={styles.modalParamLabel}>{param.name}</Text>
-
-                        <View style={styles.modalPickerWrapper}>
-                          <Picker
-                            selectedValue={currentValue}
-                            onValueChange={(val) => updateNodeData({ nodeId: id, key: param.name, value: val })}
-                            mode="dropdown"
-                            style={styles.modalPicker}
-                          >
-                            {options.map((opt) => (
-                              <Picker.Item key={opt} label={opt} value={opt} />
-                            ))}
-                          </Picker>
-                        </View>
-                      </View>
-                    );
-                  }
-                })}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
+        {isExpanded && (
+          <ExpandedParametersView
+            node={node}
+            nodeImpl={nodeImpl}
+            isInteracting={isInteracting}
+          />
+        )}
       </Animated.View>
     </NodeTranslateCtx.Provider>
   );
@@ -252,21 +255,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#444",
-    minWidth: 220,
+    overflow: 'hidden',
     padding: 8,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingBottom: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#444',
+    borderBottomColor: '#3a3a3a',
     marginBottom: 6,
   },
   headerInner: {
@@ -276,22 +278,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   nodeTitle: {
-    color: "#fff",
+    color: "#f0f0f0",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     textAlign: "center",
+    letterSpacing: 0.5,
   },
-
-  bodyPressable: {
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-  },
-
+  bodyPressable: {},
   nodeBody: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     minHeight: 40,
+    paddingHorizontal: 6,
   },
   inputsContainer: {
     alignItems: "flex-start",
@@ -305,122 +304,100 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     flex: 1,
   },
-
   hintRow: {
     marginTop: 8,
     alignItems: 'center',
+    paddingBottom: 4, 
   },
   hintText: {
     color: '#9a9a9a',
     fontSize: 11,
   },
-
   removeButton: {
     position: "absolute",
-    top: -10,
+    top: -10, 
     right: -10,
-    backgroundColor: "#ff3b30",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: '#382b2b', 
+    width: 28, 
+    height: 28,
+    borderRadius: 8, 
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,
+    borderWidth: 1, 
+    borderColor: '#5c4040', 
   },
   removeButtonText: {
-    color: "white",
+    color: "#ff8f8f", 
     fontWeight: "bold",
-    fontSize: 12,
-    lineHeight: 12,
+    fontSize: 14, 
+    lineHeight: 16, 
   },
-
-  // ---- Modal styles ----
-  modalBackdrop: {
+  parametersScrollView: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
+    marginTop: 10,
   },
-  modalContainer: {
-    marginHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "#202020",
-    maxHeight: "86%",
-    overflow: "hidden",
+  parametersContent: {
+    paddingBottom: 16,
   },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
-  },
-  modalTitle: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  modalClose: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  modalCloseText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  modalBody: {
-    padding: 12,
-    paddingBottom: 28,
-  },
-
-  modalPorts: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  param: {
     marginBottom: 12,
+    paddingHorizontal: 4,
   },
-  modalPortList: {
-    flex: 1,
-  },
-  modalPortText: {
-    color: "#bbb",
-    fontSize: 12,
-  },
-
-  modalParam: {
-    marginBottom: 16,
-  },
-  modalParamHeader: {
+  paramHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  modalParamLabel: {
-    color: "#ddd",
-    fontSize: 14,
+  paramLabel: {
+    color: "#e0e0e0",
+    fontSize: 13,
     fontWeight: "600",
   },
-  modalParamValue: {
+  paramValue: {
     color: "#aaa",
-    fontSize: 13,
+    fontSize: 12,
   },
-
-  modalSlider: {
+  slider: {
     width: "100%",
-    height: 48,
+    height: 40,
   },
-
-  modalPickerWrapper: {
+  pickerWrapper: {
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#444",
     backgroundColor: "#2b2b2b",
     overflow: "hidden",
-    minHeight: 48,
-    justifyContent: "center",
+    marginTop: 4,
+    height: 48, 
   },
-  modalPicker: {
+  picker: {
     height: 48,
     width: "100%",
-    alignSelf: "stretch",
+    color: '#fff',
+    backgroundColor: 'transparent', 
   },
+dropdownContainer: {
+  marginTop: 4,
+},
+dropdown: {
+  backgroundColor: '#2b2b2b',
+  borderColor: '#444',
+},
+dropdownList: {
+  backgroundColor: '#2b2b2b',
+  borderColor: '#444',
+},
+dropdownListItemLabel: {
+  color: '#fff',
+},
+dropdownWrapper: {
+  position: "absolute",   // escape clipping
+  left: 0,
+  right: 0,
+  top: 20,                // adjust so it lines up with your label
+  zIndex: 9999,
+  elevation: 9999,
+},
 });
