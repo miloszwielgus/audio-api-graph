@@ -25,7 +25,7 @@ registerNode({
   inputs: [],
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [ 
-    { name: 'frequency', type: 'slider', min: 20, max: 5000, step: 1, defaultValue: 440 },
+    { name: 'frequency', type: 'slider', min: 20, max: 3000, step: 10, defaultValue: 440 },
     { name: 'type', type: 'selector', options: ['sine', 'square', 'sawtooth', 'triangle'], defaultValue: 'sine' },
   ],
   compute: () => ({}),
@@ -39,8 +39,8 @@ registerNode({
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [ 
     { name: 'type', type: 'selector', options: ['lowpass', 'highpass', 'bandpass', 'notch', 'allpass', 'peaking', 'lowshelf', 'highshelf'], defaultValue: 'lowpass' },
-    { name: 'frequency', type: 'slider', min: 20, max: 20000, step: 1, defaultValue: 350 },
-    { name: 'Q', type: 'slider', min: 0.0001, max: 1000, step: 0.01, defaultValue: 1 },
+    { name: 'frequency', type: 'slider', min: 20, max: 3000, step: 10, defaultValue: 440 },
+    { name: 'Q', type: 'slider', min: 0.1, max: 20, step: 0.1, defaultValue: 1 },
   ],
   compute: () => ({}),
 });
@@ -55,13 +55,12 @@ registerNode({
   compute: () => ({}),
 });
 
-// TODO implement buffer loading and management
 registerNode({
   type: 'AudioBufferSource',
   inputs: [],
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [
-    { name: 'sample', type: 'selector', options: ['drum_loop', 'synth_pad', 'vocal_chop'], defaultValue: 'drum_loop' },
+    { name: 'sample', type: 'selector', options: ['speech','music'], defaultValue: 'music' },
     { name: 'playbackRate', type: 'slider', min: 0.1, max: 4, step: 0.01, defaultValue: 1 },
   ],
   compute: () => ({}),

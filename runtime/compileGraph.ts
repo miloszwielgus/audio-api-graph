@@ -1,6 +1,21 @@
 import { AudioContext, AudioParam, AudioScheduledSourceNode } from 'react-native-audio-api';
 import type { Connection } from "@/stores/connectionsAtoms";
 import type { GraphNode } from "@/stores/graphDataAtoms";
+import * as bufferManager from './bufferManager';
+
+
+function toNumber(v: unknown): number | undefined {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v === 'number') {
+    if (Number.isFinite(v)) return v;
+    return undefined;
+  }
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (!Number.isNaN(n) && Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
 
 export function compileAudioGraph(
   nodes: Map<string, GraphNode>,
@@ -8,7 +23,7 @@ export function compileAudioGraph(
   audioContext: AudioContext
 ) {
   let activeAudioNodes = new Map<string, any>();
-  let cleanupTimeout: NodeJS.Timeout | null = null;
+  let cleanupTimeout: number | null = null;
 
   const stop = (time?: number) => {
     if (cleanupTimeout) {
@@ -39,7 +54,7 @@ export function compileAudioGraph(
     }, delayInMs);
   };
 
-  const play = (time: number) => {
+  const play = async (time: number) => {
     for (const [nodeId, node] of nodes.entries()) {
       let audioNode: any;
       switch (node.type) {
@@ -62,11 +77,29 @@ export function compileAudioGraph(
           audioNode = audioContext.createStereoPanner();
           if (node.data.pan) audioNode.pan.value = node.data.pan;
           break;
-        case 'AudioBufferSource':
-          audioNode = audioContext.createBufferSource();
-          if (node.data.playbackRate) audioNode.playbackRate.value = node.data.playbackRate;
-          // TODO: Load and set the buffer
+        case 'AudioBufferSource': {
+          const source = audioContext.createBufferSource();
+          const sampleKey = node.data?.sample as string | undefined;
+          if (sampleKey) {
+            const buf = bufferManager.getCachedBuffer(sampleKey);
+            if (buf) {
+              source.buffer = buf;
+            } else {
+              try {
+                const loaded = await bufferManager.loadBufferForKey(audioContext, sampleKey);
+                source.buffer = loaded;
+              } catch (e) {
+                console.warn(`Failed to load buffer for sample "${sampleKey}":`, e);
+              }
+            }
+          }
+          const playback = toNumber(node.data.playbackRate);
+          if (playback !== undefined) {
+            if ((source.playbackRate as AudioParam)) (source.playbackRate as AudioParam).value = playback;
+          }
+          audioNode = source;
           break;
+        }
         case 'AudioDestination':
           audioNode = audioContext.destination;
           break;
