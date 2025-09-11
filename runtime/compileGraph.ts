@@ -23,6 +23,7 @@ export function compileAudioGraph(
         try {
           node.stop(stopTime);
         } catch (e) {
+          console.warn("Error stopping node:", e);
         }
       }
     }

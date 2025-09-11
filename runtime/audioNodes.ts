@@ -25,7 +25,7 @@ registerNode({
   inputs: [],
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [ 
-    { name: 'frequency', type: 'slider', min: 20, max: 20000, step: 1, defaultValue: 440 },
+    { name: 'frequency', type: 'slider', min: 20, max: 5000, step: 1, defaultValue: 440 },
     { name: 'type', type: 'selector', options: ['sine', 'square', 'sawtooth', 'triangle'], defaultValue: 'sine' },
   ],
   compute: () => ({}),
