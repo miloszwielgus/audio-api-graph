@@ -1,10 +1,9 @@
-// GraphNode.tsx
-import Slider from "@react-native-community/slider";
-import { useAtom, useSetAtom } from "jotai";
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import DropDownPicker from "react-native-dropdown-picker";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Slider from '@react-native-community/slider';
+import { useAtom, useSetAtom } from 'jotai';
+import React, { useContext } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import DropDownPicker from 'react-native-dropdown-picker';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -12,65 +11,61 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-} from "react-native-reanimated";
+} from 'react-native-reanimated';
 
-import { Connectable } from "@/components/Connectable";
-import { NodeTranslateCtx } from "@/components/NodeTranslateContext";
+import { CanvasTransformContext } from '@/components/Canvas';
+import { Connectable } from '@/components/Connectable';
+import { NodeTranslateCtx } from '@/components/NodeTranslateContext';
 import {
   NodeRegistry,
   SelectorParameter,
   SliderParameter,
-} from "@/runtime/nodeRegistry";
+} from '@/runtime/nodeRegistry';
 import {
   removeNodeAtom,
   topNodeAtom,
   updateNodeDataAtom,
   updateNodePositionAtom,
-} from "@/stores";
-import type { GraphNode } from "@/stores/graphDataAtoms";
-import { InteractionContext } from "./Canvas";
+} from '@/stores';
+import type { GraphNode } from '@/stores/graphDataAtoms';
 
 const colors = {
-  background: "#232736",
-  surface: "#272b3c",
-  surface2: "#30354a",
-  border: "#7485bd",
-  accent: "#b07eff",
-  accent2: "#c49ffe",
-  textPrimary: "#eef0ff",
-  textSecondary: "#c1c6e5",
-  textHint: "#abbcf5",
-  danger: "#914f55",
-  dangerText: "#ffb4b2",
-  shadow: "rgba(0, 0, 0, 0.5)",
+  background: '#232736',
+  surface: '#272b3c',
+  surface2: '#30354a',
+  border: '#7485bd',
+  accent: '#b07eff',
+  accent2: '#c49ffe',
+  textPrimary: '#eef0ff',
+  textSecondary: '#c1c6e5',
+  textHint: '#abbcf5',
+  danger: '#914f55',
+  dangerText: '#ffb4b2',
+  shadow: 'rgba(0, 0, 0, 0.5)',
 };
-
 interface GraphNodeViewProps {
   node: GraphNode;
 }
-
 const capitalize = (s: string) => {
-  if (typeof s !== "string" || s.length === 0) return "";
+  if (typeof s !== 'string' || s.length === 0) return '';
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
-
 const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
   const { id, data } = node;
   const updateNodeData = useSetAtom(updateNodeDataAtom);
   const [openPicker, setOpenPicker] = React.useState<string | null>(null);
-  const [displayValues, setDisplayValues] = React.useState<Record<string, any>>(data);
-
+  const [displayValues, setDisplayValues] =
+    React.useState<Record<string, any>>(data);
   React.useEffect(() => {
     setDisplayValues(data);
   }, [data]);
-
   return (
     <View style={styles.parametersScrollView}>
       {(nodeImpl.parameters ?? []).map((param: any, index: number) => {
         const currentValue = data[param.name] ?? (param as any).defaultValue;
-        const displayValue = displayValues[param.name] ?? (param as any).defaultValue;
-
-        if (param.type === "slider") {
+        const displayValue =
+          displayValues[param.name] ?? (param as any).defaultValue;
+        if (param.type === 'slider') {
           const s = param as SliderParameter;
           const min = s.min ?? 0;
           const max = s.max ?? 1;
@@ -119,9 +114,7 @@ const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
                 value={currentValue}
                 items={items}
                 listMode="FLATLIST"
-                setOpen={() =>
-                  setOpenPicker(isPickerOpen ? null : param.name)
-                }
+                setOpen={() => setOpenPicker(isPickerOpen ? null : param.name)}
                 setValue={(callback) => {
                   const value = callback(currentValue);
                   updateNodeData({ nodeId: id, key: param.name, value });
@@ -140,14 +133,17 @@ const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
     </View>
   );
 });
-ExpandedParametersView.displayName = "ExpandedParametersView";
+ExpandedParametersView.displayName = 'ExpandedParametersView';
 
 export function GraphNodeView({ node }: GraphNodeViewProps) {
   const { id, type, x, y } = node;
-  const interactionCtx = React.useContext(InteractionContext);
-  if (!interactionCtx) {
-    throw new Error("GraphNodeView must be used within an InteractionContext provider");
+  const canvasTransform = useContext(CanvasTransformContext);
+  if (!canvasTransform) {
+    throw new Error(
+      'GraphNodeView must be used within a Canvas component that provides CanvasTransformContext',
+    );
   }
+  const { scale: canvasScale } = canvasTransform;
 
   const positionX = useSharedValue(x);
   const positionY = useSharedValue(y);
@@ -168,22 +164,25 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
   const PARAM_HEIGHT = 65;
   const expandedHeight = BASE_HEIGHT + numParameters * PARAM_HEIGHT;
 
-  const panGesture = Gesture.Pan()
+  const headerPanGesture = Gesture.Pan()
     .onStart(() => {
       runOnJS(setTopNode)(id);
       startX.value = positionX.value;
       startY.value = positionY.value;
     })
     .onUpdate((e) => {
-      positionX.value = startX.value + e.translationX;
-      positionY.value = startY.value + e.translationY;
+      positionX.value = startX.value + e.translationX / canvasScale.value;
+      positionY.value = startY.value + e.translationY / canvasScale.value;
     })
     .onEnd(() => {
       runOnJS(setNodePosition)({ id, x: positionX.value, y: positionY.value });
     });
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: positionX.value }, { translateY: positionY.value }],
+    transform: [
+      { translateX: positionX.value },
+      { translateY: positionY.value },
+    ],
     height: withTiming(isExpanded ? expandedHeight : BASE_HEIGHT, {
       duration: 250,
     }),
@@ -202,16 +201,17 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
   };
 
   return (
-    <NodeTranslateCtx.Provider value={{ tx: positionX, ty: positionY }}>
-      <Animated.View
-        style={[styles.node, animatedStyle, { zIndex: topNode === id ? 1 : 0 }]}
-      >
+    <Animated.View
+      style={[styles.node, animatedStyle, { zIndex: topNode === id ? 2 : 1 }]}
+    >
+      <NodeTranslateCtx.Provider value={{ tx: positionX, ty: positionY }}>
         <View style={styles.nodeContent}>
-          <GestureDetector gesture={panGesture}>
+          <GestureDetector gesture={headerPanGesture}>
             <View style={styles.header}>
               <Text style={styles.nodeTitle}>{nodeImpl.type}</Text>
             </View>
           </GestureDetector>
+
           <Pressable
             style={styles.bodyPressable}
             onLongPress={handleLongPress}
@@ -225,7 +225,9 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
                     styles.expandIcon,
                     pressed && styles.expandIconPressed,
                   ]}
-                  accessibilityLabel={numParameters > 0 ? "Expand parameters" : "No parameters"}
+                  accessibilityLabel={
+                    numParameters > 0 ? 'Expand parameters' : 'No parameters'
+                  }
                 >
                   <Text
                     style={[
@@ -233,11 +235,12 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
                       isExpanded && styles.expandIconTextExpanded,
                     ]}
                   >
-                    {isExpanded ? "-" : "+"}
+                    {isExpanded ? '-' : '+'}
                   </Text>
                 </Pressable>
               </View>
             )}
+
             {isExpanded && (
               <Animated.View
                 style={styles.parametersContainer}
@@ -248,52 +251,50 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
               </Animated.View>
             )}
           </Pressable>
-        </View>
 
-        <View style={styles.socketsContainer}>
-          {(nodeImpl.inputs ?? []).map((input, index) => (
-            <View
-              key={`input-${id}-${input.name}`}
-              style={[
-                styles.socket,
-                styles.inputSocket,
-                { top: 40 + index * 25 },
-              ]}
-            >
-              <Connectable nodeId={id} socket={input} type="input" />
-            </View>
-          ))}
-          {node.type !== "AudioDestination" &&
-            (nodeImpl.outputs ?? []).map((output, index) => (
+          <View style={styles.socketsContainer}>
+            {(nodeImpl.inputs ?? []).map((input, index) => (
               <View
-                key={`output-${id}-${output.name}`}
+                key={`input-${id}-${input.name}`}
                 style={[
                   styles.socket,
-                  styles.outputSocket,
+                  styles.inputSocket,
                   { top: 40 + index * 25 },
                 ]}
               >
-                <Connectable nodeId={id} socket={output} type="output" />
+                <Connectable nodeId={id} socket={input} type="input" />
               </View>
             ))}
+
+            {node.type !== 'AudioDestination' &&
+              (nodeImpl.outputs ?? []).map((output, index) => (
+                <View
+                  key={`output-${id}-${output.name}`}
+                  style={[
+                    styles.socket,
+                    styles.outputSocket,
+                    { top: 40 + index * 25 },
+                  ]}
+                >
+                  <Connectable nodeId={id} socket={output} type="output" />
+                </View>
+              ))}
+          </View>
         </View>
-        
-        {type !== "AudioDestination" && (
-          <Pressable
-            style={styles.removeButton}
-            onPress={() => removeNode(id)}
-          >
+
+        {type !== 'AudioDestination' && (
+          <Pressable style={styles.removeButton} onPress={() => removeNode(id)}>
             <Text style={styles.removeButtonText}>×</Text>
           </Pressable>
         )}
-      </Animated.View>
-    </NodeTranslateCtx.Provider>
+      </NodeTranslateCtx.Provider>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   node: {
-    position: "absolute",
+    position: 'absolute',
     width: 200,
     backgroundColor: colors.surface,
     borderRadius: 10,
@@ -316,67 +317,67 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 9,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    alignItems: "center",
+    alignItems: 'center',
   },
   nodeTitle: {
     color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   bodyPressable: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: 'center',
     borderRadius: 9,
   },
   hintContainer: {
-    alignItems: "center",
+    alignItems: 'center',
     paddingVertical: 8,
   },
-
   expandIcon: {
-    width: 28, 
-    height: 28, 
-    borderRadius: 14, 
-    borderWidth: 2, 
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
     borderColor: colors.accent,
     backgroundColor: colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 }, 
-    shadowOpacity: 0.2, 
-    shadowRadius: 3, 
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
     elevation: 2,
   },
   expandIconPressed: {
-    opacity: 0.8, 
-    transform: [{ scale: 0.95 }], 
+    opacity: 0.8,
+    transform: [{ scale: 0.95 }],
   },
   expandIconText: {
-    color: colors.accent, 
-    fontSize: 18, 
-    fontWeight: "bold", 
-    lineHeight: 20, 
+    color: colors.accent,
+    fontSize: 18,
+    fontWeight: 'bold',
+    lineHeight: 20,
   },
   expandIconTextExpanded: {
-    transform: [{ rotate: "0deg" }],
+    transform: [{ rotate: '0deg' }],
   },
-
   hintText: {
     color: colors.textHint,
     fontSize: 11,
-    fontStyle: "italic",
+    fontStyle: 'italic',
   },
   socketsContainer: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    pointerEvents: 'box-none',
   },
   socket: {
-    position: "absolute",
+    position: 'absolute',
     zIndex: 10,
+    pointerEvents: 'auto',
   },
   inputSocket: {
     left: 0,
@@ -387,22 +388,22 @@ const styles = StyleSheet.create({
     transform: [{ translateX: 8 }],
   },
   removeButton: {
-    position: "absolute",
+    position: 'absolute',
     top: -8,
     right: -8,
     width: 22,
     height: 22,
     borderRadius: 11,
     backgroundColor: colors.danger,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 20,
     borderWidth: 1,
     borderColor: colors.dangerText,
   },
   removeButtonText: {
     color: colors.dangerText,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     fontSize: 12,
     lineHeight: 20,
   },
@@ -418,9 +419,9 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   paramHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
     marginBottom: 2,
   },
   paramLabel: {
@@ -430,11 +431,11 @@ const styles = StyleSheet.create({
   paramValue: {
     color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: "500",
-    fontFamily: "monospace",
+    fontWeight: '500',
+    fontFamily: 'monospace',
   },
   slider: {
-    width: "100%",
+    width: '100%',
     height: 30,
   },
   dropdownContainer: {

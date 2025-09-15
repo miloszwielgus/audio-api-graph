@@ -1,183 +1,146 @@
-// Canvas.tsx
-import React, { useEffect } from "react";
-import type { ReactNode } from "react";
-import { StyleSheet, View, Text, Pressable, ActivityIndicator } from "react-native";
-import { useSharedValue, type SharedValue } from "react-native-reanimated";
-import ConnectionsOverlay from "@/components/ConnectionsOverlay";
-import { GhostConnection } from "@/components/GhostConnection";
+// Canvas.tsx — replacement (keep other imports the same)
+import React, { createContext, type ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  type SharedValue,
+} from 'react-native-reanimated';
 
-import { useAtomValue } from "jotai";
-import { compiledGraphAtom, audioContextAtom } from "@/stores";
+import { AudioPlayer } from '@/components/AudioPlayer';
+import ConnectionsOverlay from '@/components/ConnectionsOverlay';
+import { GhostConnection } from '@/components/GhostConnection';
 
-export const InteractionContext = React.createContext<{
-  isInteracting: SharedValue<number>;
-} | null>(null);
+interface CanvasTransform {
+  translateX: SharedValue<number>;
+  translateY: SharedValue<number>;
+  scale: SharedValue<number>;
+}
+
+export const CanvasTransformContext = createContext<CanvasTransform | null>(
+  null,
+);
 
 interface CanvasProps {
   children: ReactNode;
 }
 
 export function Canvas({ children }: CanvasProps) {
-  const isInteracting = useSharedValue(0);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const prevTranslateX = useSharedValue(0);
+  const prevTranslateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const prevScale = useSharedValue(1);
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      prevTranslateX.value = translateX.value;
+      prevTranslateY.value = translateY.value;
+    })
+    .onUpdate((e) => {
+      translateX.value = prevTranslateX.value + e.translationX;
+      translateY.value = prevTranslateY.value + e.translationY;
+    });
+
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      prevScale.value = scale.value;
+    })
+    .onUpdate((e) => {
+      const [minScale, maxScale] = [0.5, 3];
+      scale.value = Math.min(
+        maxScale,
+        Math.max(minScale, prevScale.value * e.scale),
+      );
+    });
+
+  const composedGesture = Gesture.Simultaneous(panGesture, pinchGesture);
+
+  // Nodes layer transform — apply the animated transform to the nodes layer.
+  const nodesAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
 
   return (
     <View style={styles.container}>
-      <InteractionContext.Provider value={{ isInteracting }}>
-        <View style={styles.canvas}>
-          <GhostConnection />
-          <ConnectionsOverlay />
-          <View style={styles.nodesWrapper}>
-            {children}
-          </View>
+      {/* Gesture surface (captures pan/pinch on empty canvas) */}
+      <GestureDetector gesture={composedGesture}>
+        <View style={styles.gestureSurface} pointerEvents="auto" />
+      </GestureDetector>
 
-          <AudioPlayer />
-        </View>
-      </InteractionContext.Provider>
-    </View>
-  );
-}
+      {/* Overlay layer: draws wires & ghost using screen/page coordinates (UNTRANSFORMED).
+          pointerEvents none so touches fall through to gestureSurface or nodes. */}
+      <View style={styles.overlayLayer} pointerEvents="none">
+        <ConnectionsOverlay />
+        <GhostConnection />
+      </View>
 
-
-function AudioPlayer() {
-  const audioContext = useAtomValue(audioContextAtom);
-  const compiledGraph = useAtomValue(compiledGraphAtom);
-
-  const [isPlaying, setIsPlaying] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  const startingRef = React.useRef(false);
-
-  useEffect(() => {
-    return () => {
-      try {
-        if (compiledGraph && typeof compiledGraph.stop === "function") {
-          compiledGraph.stop(audioContext.currentTime);
-        }
-      } catch (e) {
-        console.warn("Error stopping graph on unmount:", e);
-      }
-    };
-  }, []);
-
-  const handlePlay = async () => {
-    if (!compiledGraph || typeof compiledGraph.play !== "function") {
-      console.warn("Audio graph not ready.");
-      return;
-    }
-    if (startingRef.current) return; // already starting
-    startingRef.current = true;
-    setIsLoading(true);
-
-    try {
-      await compiledGraph.play(audioContext.currentTime);
-      setIsPlaying(true);
-    } catch (err) {
-      console.error("Failed to play audio graph:", err);
-    } finally {
-      startingRef.current = false;
-      setIsLoading(false);
-    }
-  };
-
-  const handleStop = () => {
-    if (!compiledGraph || typeof compiledGraph.stop !== "function") return;
-    try {
-      compiledGraph.stop(audioContext.currentTime);
-    } catch (err) {
-      console.warn("Error while stopping graph:", err);
-    }
-    setIsPlaying(false);
-    startingRef.current = false;
-    setIsLoading(false);
-  };
-
-  const togglePlay = async () => {
-    if (isPlaying) {
-      handleStop();
-      return;
-    }
-    await handlePlay();
-  };
-
-  return (
-    <View style={styles.playerContainer}>
-      <Pressable
-        onPress={togglePlay}
-        style={({ pressed }) => [
-          styles.playButton,
-          pressed && styles.playButtonPressed,
-          isPlaying && styles.playButtonActive,
-        ]}
-        accessibilityLabel={isPlaying ? "Stop audio" : "Play audio"}
+      {/* Nodes layer: above overlay so nodes/sockets render on top.
+          pointerEvents="box-none" so container does not block touches on empty areas;
+          its children (nodes) still receive touches. */}
+      <CanvasTransformContext.Provider
+        value={{ translateX, translateY, scale }}
       >
-        {isLoading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.playButtonText}>{isPlaying ? "Stop" : "Play"}</Text>
-        )}
-      </Pressable>
+        <Animated.View
+          style={[styles.nodesLayer, nodesAnimatedStyle]}
+          pointerEvents="box-none"
+        >
+          {children}
+        </Animated.View>
+      </CanvasTransformContext.Provider>
 
-
+      <View style={styles.playerWrapper}>
+        <AudioPlayer />
+      </View>
     </View>
   );
 }
 
-/* -------- styles -------- */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#1a1a1a",
-  },
-  canvas: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-  nodesWrapper: {
-    flex: 1,
+  container: { flex: 1, backgroundColor: '#1a1a1a' },
+
+  // Transparent gesture capture surface (not transformed)
+  gestureSurface: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
   },
 
-  /* audio player */
-  playerContainer: {
-    //position: "absolute",
-    //right: 12,
-    bottom: 18,
-    backgroundColor: "rgba(28,28,30,0.85)",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    minWidth: 120,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
-    elevation: 6,
+  // Overlay layer: draws the SVG wires in screen coordinates.
+  overlayLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
-  playButton: {
-    backgroundColor: "#33488e",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    minWidth: 88,
-    alignItems: "center",
-    justifyContent: "center",
+
+  // Nodes layer: actual nodes get transformed here, above overlay.
+  nodesLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 2,
   },
-  playButtonPressed: {
-    opacity: 0.85,
-  },
-  playButtonActive: {
-    backgroundColor: "#8b5cf6",
-  },
-  playButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  playerHint: {
-    marginTop: 8,
-    color: "#cfcfe0",
-    fontSize: 11,
-    textAlign: "center",
+
+  playerWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 3,
   },
 });
