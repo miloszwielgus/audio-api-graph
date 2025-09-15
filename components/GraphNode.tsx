@@ -1,16 +1,13 @@
-// GraphNodeView.tsx
+// GraphNode.tsx
 import Slider from "@react-native-community/slider";
 import { useAtom, useSetAtom } from "jotai";
 import React from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import DropDownPicker from 'react-native-dropdown-picker';
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import DropDownPicker from "react-native-dropdown-picker";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
+  FadeIn,
+  FadeOut,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -19,47 +16,71 @@ import Animated, {
 
 import { Connectable } from "@/components/Connectable";
 import { NodeTranslateCtx } from "@/components/NodeTranslateContext";
-import { NodeRegistry, SelectorParameter, SliderParameter } from "@/runtime/nodeRegistry";
-import { removeNodeAtom, topNodeAtom, updateNodeDataAtom, updateNodePositionAtom } from "@/stores";
+import {
+  NodeRegistry,
+  SelectorParameter,
+  SliderParameter,
+} from "@/runtime/nodeRegistry";
+import {
+  removeNodeAtom,
+  topNodeAtom,
+  updateNodeDataAtom,
+  updateNodePositionAtom,
+} from "@/stores";
 import type { GraphNode } from "@/stores/graphDataAtoms";
 import { InteractionContext } from "./Canvas";
+
+const colors = {
+  background: "#232736",
+  surface: "#272b3c",
+  surface2: "#30354a",
+  border: "#7485bd",
+  accent: "#b07eff",
+  accent2: "#c49ffe",
+  textPrimary: "#eef0ff",
+  textSecondary: "#c1c6e5",
+  textHint: "#abbcf5",
+  danger: "#914f55",
+  dangerText: "#ffb4b2",
+  shadow: "rgba(0, 0, 0, 0.5)",
+};
 
 interface GraphNodeViewProps {
   node: GraphNode;
 }
 
 const capitalize = (s: string) => {
-  if (typeof s !== 'string' || s.length === 0) {
-    return '';
-  }
+  if (typeof s !== "string" || s.length === 0) return "";
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-
-const ExpandedParametersView = React.memo(({ node, nodeImpl, isInteracting }: any) => {
+const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
   const { id, data } = node;
   const updateNodeData = useSetAtom(updateNodeDataAtom);
-
   const [openPicker, setOpenPicker] = React.useState<string | null>(null);
+  const [displayValues, setDisplayValues] = React.useState<Record<string, any>>(data);
+
+  React.useEffect(() => {
+    setDisplayValues(data);
+  }, [data]);
 
   return (
-    <View
-      style={styles.parametersScrollView}
-    >
-      {(nodeImpl.parameters ?? []).map((param: any) => {
+    <View style={styles.parametersScrollView}>
+      {(nodeImpl.parameters ?? []).map((param: any, index: number) => {
         const currentValue = data[param.name] ?? (param as any).defaultValue;
+        const displayValue = displayValues[param.name] ?? (param as any).defaultValue;
+
         if (param.type === "slider") {
           const s = param as SliderParameter;
           const min = s.min ?? 0;
           const max = s.max ?? 1;
-          const step = s.step ?? ((Math.abs(max - min) / 100) || 0.01);
-          const numericValue = Number(currentValue);
+          const step = s.step ?? (Math.abs(max - min) / 100 || 0.01);
           return (
             <View key={param.name} style={styles.param}>
               <View style={styles.paramHeader}>
                 <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
                 <Text style={styles.paramValue}>
-                  {Number.isFinite(numericValue) ? numericValue.toFixed(3) : String(currentValue)}
+                  {Number(displayValue).toFixed(3)}
                 </Text>
               </View>
               <Slider
@@ -67,44 +88,51 @@ const ExpandedParametersView = React.memo(({ node, nodeImpl, isInteracting }: an
                 minimumValue={min}
                 maximumValue={max}
                 step={step}
-                value={numericValue}
-                onSlidingStart={() => { isInteracting.value = 1; }}
-                onValueChange={(val) => updateNodeData({ nodeId: id, key: param.name, value: val })}
-                onSlidingComplete={() => { isInteracting.value = 0; }}
-                thumbTintColor="#e0e0e0"
-                minimumTrackTintColor="#a56de2"
-                maximumTrackTintColor="#555"
+                value={Number(currentValue)}
+                onValueChange={(val) => {
+                  setDisplayValues((prev) => ({ ...prev, [param.name]: val }));
+                }}
+                onSlidingComplete={(val) => {
+                  updateNodeData({ nodeId: id, key: param.name, value: val });
+                }}
+                thumbTintColor={colors.accent2}
+                minimumTrackTintColor={colors.accent}
+                maximumTrackTintColor={colors.surface2}
               />
             </View>
           );
-        } else { // selector
-                    const s = param as SelectorParameter<string>;
-          const items = (s.options ?? []).map(opt => ({ label: opt, value: opt }));
-          const currentValue = data[param.name] ?? s.defaultValue;
-
+        } else {
+          const s = param as SelectorParameter<string>;
+          const items = (s.options ?? []).map((opt) => ({
+            label: opt,
+            value: opt,
+          }));
+          const isPickerOpen = openPicker === param.name;
           return (
-            <View key={param.name} style={[styles.param, { zIndex: 100 }]}>
+            <View
+              key={param.name}
+              style={[styles.param, { zIndex: isPickerOpen ? 100 - index : 1 }]}
+            >
               <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
-              <View style={styles.dropdownWrapper}>
-                <DropDownPicker
-                  open={openPicker === param.name}
-                  value={currentValue}
-                  items={items}
-                  listMode="FLATLIST"
-                  setOpen={() => setOpenPicker(openPicker === param.name ? null : param.name)}
-                  setValue={(callback) => {
-                    const value = callback(currentValue); // Get the new value
-                    updateNodeData({ nodeId: id, key: param.name, value });
-                  }}
-                  // Styling props
-                  theme="DARK"
-                  style={styles.dropdown}
-                  containerStyle={styles.dropdownContainer}
-                  dropDownContainerStyle={styles.dropdownList}
-                  listItemLabelStyle={styles.dropdownListItemLabel}
-                  placeholder="Select an item"
-                />
-              </View>
+              <DropDownPicker
+                open={isPickerOpen}
+                value={currentValue}
+                items={items}
+                listMode="FLATLIST"
+                setOpen={() =>
+                  setOpenPicker(isPickerOpen ? null : param.name)
+                }
+                setValue={(callback) => {
+                  const value = callback(currentValue);
+                  updateNodeData({ nodeId: id, key: param.name, value });
+                }}
+                theme="DARK"
+                style={styles.dropdown}
+                containerStyle={styles.dropdownContainer}
+                dropDownContainerStyle={styles.dropdownList}
+                listItemLabelStyle={styles.dropdownListItemLabel}
+                placeholder="Select an item"
+              />
             </View>
           );
         }
@@ -112,136 +140,151 @@ const ExpandedParametersView = React.memo(({ node, nodeImpl, isInteracting }: an
     </View>
   );
 });
-
-ExpandedParametersView.displayName = 'ExpandedParametersView';
-
+ExpandedParametersView.displayName = "ExpandedParametersView";
 
 export function GraphNodeView({ node }: GraphNodeViewProps) {
   const { id, type, x, y } = node;
   const interactionCtx = React.useContext(InteractionContext);
-  if (!interactionCtx) { throw new Error("GraphNodeView must be used within an InteractionContext provider"); }
-  
-  const isInteracting = interactionCtx.isInteracting;
+  if (!interactionCtx) {
+    throw new Error("GraphNodeView must be used within an InteractionContext provider");
+  }
 
   const positionX = useSharedValue(x);
   const positionY = useSharedValue(y);
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
-
   const [isExpanded, setExpanded] = React.useState(false);
-
   const [topNode, setTopNode] = useAtom(topNodeAtom);
   const removeNode = useSetAtom(removeNodeAtom);
   const setNodePosition = useSetAtom(updateNodePositionAtom);
-
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      //if (isInteracting?.value === 1) return;
-      runOnJS(setTopNode)(id);
-      startX.value = positionX.value;
-      startY.value = positionY.value;
-    })
-    .onUpdate((e) => {
-      //if (isInteracting?.value === 1 || isExpanded) return;
-      positionX.value = startX.value + e.translationX;
-      positionY.value = startY.value + e.translationY;
-    })
-    .onEnd(() => {
-      //if (isInteracting?.value === 1 || isExpanded) return;
-      runOnJS(setNodePosition)({ id, x: positionX.value, y: positionY.value });
-    });
-  
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        { translateX: positionX.value },
-        { translateY: positionY.value },
-      ],
-      width: withTiming(isExpanded ? 300 : 220, { duration: 250 }),
-      height: withTiming(isExpanded ? 350 : 120, { duration: 250 }),
-    };
-  });
 
   const nodeImpl = NodeRegistry.get(type);
   if (!nodeImpl) {
     throw new Error(`Node type "${type}" not found in registry`);
   }
 
+  const numParameters = nodeImpl.parameters?.length ?? 0;
+  const BASE_HEIGHT = 100;
+  const PARAM_HEIGHT = 65;
+  const expandedHeight = BASE_HEIGHT + numParameters * PARAM_HEIGHT;
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      runOnJS(setTopNode)(id);
+      startX.value = positionX.value;
+      startY.value = positionY.value;
+    })
+    .onUpdate((e) => {
+      positionX.value = startX.value + e.translationX;
+      positionY.value = startY.value + e.translationY;
+    })
+    .onEnd(() => {
+      runOnJS(setNodePosition)({ id, x: positionX.value, y: positionY.value });
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: positionX.value }, { translateY: positionY.value }],
+    height: withTiming(isExpanded ? expandedHeight : BASE_HEIGHT, {
+      duration: 250,
+    }),
+  }));
+
   const handleLongPress = () => {
+    if (numParameters === 0) return;
     setTopNode(id);
     setExpanded(!isExpanded);
+  };
+
+  const toggleExpandFromIcon = () => {
+    if (numParameters === 0) return;
+    setTopNode(id);
+    setExpanded((v) => !v);
   };
 
   return (
     <NodeTranslateCtx.Provider value={{ tx: positionX, ty: positionY }}>
       <Animated.View
-        style={[
-          styles.node,
-          animatedStyle,
-          { zIndex: topNode === id ? 1 : 0 },
-        ]}
+        style={[styles.node, animatedStyle, { zIndex: topNode === id ? 1 : 0 }]}
       >
-        <GestureDetector gesture={panGesture}>
-          <View style={styles.header}>
-            {type !== "AudioDestination" && (
-              <Pressable
-                style={styles.removeButton} 
-                onPress={() => removeNode(id)}
-              >
-                <Text style={styles.removeButtonText}>×</Text>
-              </Pressable>
-            )}
-
-            <View style={styles.headerInner}>
+        <View style={styles.nodeContent}>
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.header}>
               <Text style={styles.nodeTitle}>{nodeImpl.type}</Text>
             </View>
-          </View>
-        </GestureDetector>
-
-        <Pressable
-          style={styles.bodyPressable}
-          onLongPress={handleLongPress}
-          android_ripple={{ color: "#333", borderless: false }}
-        >
-          <View style={styles.nodeBody}>
-            <View style={styles.inputsContainer}>
-              {(nodeImpl.inputs ?? []).map((input) => (
-                <Connectable
-                  key={`input-${id}-${input.name}`}
-                  nodeId={id}
-                  socket={input}
-                  type="input"
-                />
-              ))}
-            </View>
-
-            {node.type !== "AudioDestination" && (
-              <View style={styles.outputsContainer}>
-                {(nodeImpl.outputs ?? []).map((output) => (
-                  <Connectable
-                    key={`output-${id}-${output.name}`}
-                    nodeId={id}
-                    socket={output}
-                    type="output"
-                  />
-                ))}
+          </GestureDetector>
+          <Pressable
+            style={styles.bodyPressable}
+            onLongPress={handleLongPress}
+            android_ripple={{ color: colors.surface2 }}
+          >
+            {!isExpanded && (
+              <View style={styles.hintContainer}>
+                <Pressable
+                  onPress={toggleExpandFromIcon}
+                  style={({ pressed }) => [
+                    styles.expandIcon,
+                    pressed && styles.expandIconPressed,
+                  ]}
+                  accessibilityLabel={numParameters > 0 ? "Expand parameters" : "No parameters"}
+                >
+                  <Text
+                    style={[
+                      styles.expandIconText,
+                      isExpanded && styles.expandIconTextExpanded,
+                    ]}
+                  >
+                    {isExpanded ? "-" : "+"}
+                  </Text>
+                </Pressable>
               </View>
             )}
-          </View>
+            {isExpanded && (
+              <Animated.View
+                style={styles.parametersContainer}
+                entering={FadeIn.duration(250).delay(50)}
+                exiting={FadeOut.duration(150)}
+              >
+                <ExpandedParametersView node={node} nodeImpl={nodeImpl} />
+              </Animated.View>
+            )}
+          </Pressable>
+        </View>
 
-          <View style={styles.hintRow}>
-            <Text style={styles.hintText}>
-              Long-press to {isExpanded ? "collapse" : "edit"}
-            </Text>
-          </View>
-        </Pressable>
-
-        {isExpanded && (
-          <ExpandedParametersView
-            node={node}
-            nodeImpl={nodeImpl}
-            isInteracting={isInteracting}
-          />
+        <View style={styles.socketsContainer}>
+          {(nodeImpl.inputs ?? []).map((input, index) => (
+            <View
+              key={`input-${id}-${input.name}`}
+              style={[
+                styles.socket,
+                styles.inputSocket,
+                { top: 40 + index * 25 },
+              ]}
+            >
+              <Connectable nodeId={id} socket={input} type="input" />
+            </View>
+          ))}
+          {node.type !== "AudioDestination" &&
+            (nodeImpl.outputs ?? []).map((output, index) => (
+              <View
+                key={`output-${id}-${output.name}`}
+                style={[
+                  styles.socket,
+                  styles.outputSocket,
+                  { top: 40 + index * 25 },
+                ]}
+              >
+                <Connectable nodeId={id} socket={output} type="output" />
+              </View>
+            ))}
+        </View>
+        
+        {type !== "AudioDestination" && (
+          <Pressable
+            style={styles.removeButton}
+            onPress={() => removeNode(id)}
+          >
+            <Text style={styles.removeButtonText}>×</Text>
+          </Pressable>
         )}
       </Animated.View>
     </NodeTranslateCtx.Provider>
@@ -251,153 +294,164 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
 const styles = StyleSheet.create({
   node: {
     position: "absolute",
-    backgroundColor: "#2a2a2a",
+    width: 200,
+    backgroundColor: colors.surface,
     borderRadius: 10,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 10,
     borderWidth: 1,
-    borderColor: "#444",
-    overflow: 'hidden',
-    padding: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderColor: colors.border,
+  },
+  nodeContent: {
+    flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: 6,
+    backgroundColor: colors.background,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderTopLeftRadius: 9,
+    borderTopRightRadius: 9,
     borderBottomWidth: 1,
-    borderBottomColor: '#3a3a3a',
-    marginBottom: 6,
-  },
-  headerInner: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
+    borderBottomColor: colors.border,
+    alignItems: "center",
   },
   nodeTitle: {
-    color: "#f0f0f0",
+    color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: 0.5,
+    fontWeight: "600",
   },
-  bodyPressable: {},
-  nodeBody: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  bodyPressable: {
+    flex: 1,
+    justifyContent: "center",
+    borderRadius: 9,
+  },
+  hintContainer: {
     alignItems: "center",
-    minHeight: 40,
-    paddingHorizontal: 6,
+    paddingVertical: 8,
   },
-  inputsContainer: {
-    alignItems: "flex-start",
+
+  expandIcon: {
+    width: 28, 
+    height: 28, 
+    borderRadius: 14, 
+    borderWidth: 2, 
+    borderColor: colors.accent,
+    backgroundColor: colors.surface,
+    alignItems: "center",
     justifyContent: "center",
-    paddingRight: 8,
-    flex: 1,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 }, 
+    shadowOpacity: 0.2, 
+    shadowRadius: 3, 
+    elevation: 2,
   },
-  outputsContainer: {
-    alignItems: "flex-end",
-    justifyContent: "center",
-    paddingLeft: 8,
-    flex: 1,
+  expandIconPressed: {
+    opacity: 0.8, 
+    transform: [{ scale: 0.95 }], 
   },
-  hintRow: {
-    marginTop: 8,
-    alignItems: 'center',
-    paddingBottom: 4, 
+  expandIconText: {
+    color: colors.accent, 
+    fontSize: 18, 
+    fontWeight: "bold", 
+    lineHeight: 20, 
   },
+  expandIconTextExpanded: {
+    transform: [{ rotate: "0deg" }],
+  },
+
   hintText: {
-    color: '#9a9a9a',
+    color: colors.textHint,
     fontSize: 11,
+    fontStyle: "italic",
+  },
+  socketsContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  socket: {
+    position: "absolute",
+    zIndex: 10,
+  },
+  inputSocket: {
+    left: 0,
+    transform: [{ translateX: -8 }],
+  },
+  outputSocket: {
+    right: 0,
+    transform: [{ translateX: 8 }],
   },
   removeButton: {
     position: "absolute",
-    top: -10, 
-    right: -10,
-    backgroundColor: '#382b2b', 
-    width: 28, 
-    height: 28,
-    borderRadius: 8, 
+    top: -8,
+    right: -8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.danger,
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 2,
-    borderWidth: 1, 
-    borderColor: '#5c4040', 
+    zIndex: 20,
+    borderWidth: 1,
+    borderColor: colors.dangerText,
   },
   removeButtonText: {
-    color: "#ff8f8f", 
+    color: colors.dangerText,
     fontWeight: "bold",
-    fontSize: 14, 
-    lineHeight: 16, 
+    fontSize: 12,
+    lineHeight: 20,
+  },
+  parametersContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
   parametersScrollView: {
     flex: 1,
-    marginTop: 10,
-  },
-  parametersContent: {
-    paddingBottom: 16,
   },
   param: {
-    marginBottom: 12,
-    paddingHorizontal: 4,
+    marginVertical: 4,
   },
   paramHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: "baseline",
+    marginBottom: 2,
   },
   paramLabel: {
-    color: "#e0e0e0",
+    color: colors.textSecondary,
     fontSize: 13,
-    fontWeight: "600",
   },
   paramValue: {
-    color: "#aaa",
-    fontSize: 12,
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: "500",
+    fontFamily: "monospace",
   },
   slider: {
     width: "100%",
-    height: 40,
+    height: 30,
   },
-  pickerWrapper: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#444",
-    backgroundColor: "#2b2b2b",
-    overflow: "hidden",
+  dropdownContainer: {
     marginTop: 4,
-    height: 48, 
   },
-  picker: {
-    height: 48,
-    width: "100%",
-    color: '#fff',
-    backgroundColor: 'transparent', 
+  dropdown: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+    height: 35,
+    minHeight: 35,
   },
-dropdownContainer: {
-  marginTop: 4,
-},
-dropdown: {
-  backgroundColor: '#2b2b2b',
-  borderColor: '#444',
-},
-dropdownList: {
-  backgroundColor: '#2b2b2b',
-  borderColor: '#444',
-},
-dropdownListItemLabel: {
-  color: '#fff',
-},
-dropdownWrapper: {
-  position: "absolute",   // escape clipping
-  left: 0,
-  right: 0,
-  top: 20,                // adjust so it lines up with your label
-  zIndex: 9999,
-  elevation: 9999,
-},
+  dropdownList: {
+    backgroundColor: colors.surface2,
+    borderColor: colors.border,
+  },
+  dropdownListItemLabel: {
+    color: colors.textPrimary,
+    fontSize: 12,
+  },
 });

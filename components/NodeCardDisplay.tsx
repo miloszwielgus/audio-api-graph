@@ -1,8 +1,16 @@
 import type React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { Colors } from "@/constants/Colors";
-import { useColorScheme } from "@/hooks/useColorScheme";
 import { NodeRegistry, type Socket } from "@/runtime/nodeRegistry";
+
+const colors = {
+  background: "#232736", 
+  surface: "#272b3c",   
+  border: "#7485bd",      
+  accent: "#b07eff",      
+  textPrimary: "#eef0ff",
+  textSecondary: "#c1c6e5",
+  shadow: "rgba(0, 0, 0, 0.5)",
+};
 
 interface NodeCardDisplayProps {
   nodeType: string;
@@ -12,38 +20,21 @@ const SocketDisplay: React.FC<{ socket: Socket; type: "input" | "output" }> = ({
   socket,
   type,
 }) => {
-  const colorScheme = useColorScheme();
-  const portStyle = type === "input" ? styles.inputPort : styles.outputPort;
-  const labelStyle = type === "input" ? styles.inputLabel : styles.outputLabel;
+  const isInput = type === "input";
+  const marginStyle = isInput ? styles.inputMargin : styles.outputMargin;
 
   return (
-    <View style={styles.portRow}>
-      {type === "input" && (
-        <View
-          style={[
-            styles.port,
-            portStyle,
-            { borderColor: Colors[colorScheme ?? "light"].icon },
-          ]}
-        />
+    <View style={styles.socketRow}>
+      {isInput && (
+        <View style={[styles.socket, marginStyle]}>
+          <View style={styles.socketInner} />
+        </View>
       )}
-      <Text
-        style={[
-          styles.portLabel,
-          labelStyle,
-          { color: Colors[colorScheme ?? "light"].text },
-        ]}
-      >
-        {socket.name}
-      </Text>
-      {type === "output" && (
-        <View
-          style={[
-            styles.port,
-            portStyle,
-            { borderColor: Colors[colorScheme ?? "light"].icon },
-          ]}
-        />
+      <Text style={styles.socketLabel}>{socket.name}</Text>
+      {!isInput && (
+        <View style={[styles.socket, marginStyle]}>
+          <View style={styles.socketInner} />
+        </View>
       )}
     </View>
   );
@@ -53,29 +44,14 @@ export const NodeCardDisplay: React.FC<NodeCardDisplayProps> = ({
   nodeType,
 }) => {
   const nodeImpl = NodeRegistry.get(nodeType);
-  const colorScheme = useColorScheme();
 
   if (!nodeImpl) {
     throw new Error(`Node type "${nodeType}" not found in registry.`);
   }
 
   return (
-    <View
-      style={[
-        styles.nodeCard,
-        { backgroundColor: Colors[colorScheme ?? "light"].background },
-        { borderColor: Colors[colorScheme ?? "light"].icon },
-      ]}
-    >
-      <Text
-        style={[
-          styles.nodeTitle,
-          { color: Colors[colorScheme ?? "light"].text },
-          { borderBottomColor: Colors[colorScheme ?? "light"].icon },
-        ]}
-      >
-        {nodeImpl.type}
-      </Text>
+    <View style={styles.nodeCard}>
+      <Text style={styles.nodeTitle}>{nodeImpl.type}</Text>
       <View style={styles.nodeBody}>
         <View style={styles.inputsContainer}>
           {nodeImpl.inputs.map((input) => (
@@ -94,24 +70,28 @@ export const NodeCardDisplay: React.FC<NodeCardDisplayProps> = ({
 
 const styles = StyleSheet.create({
   nodeCard: {
-    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 10,
     borderWidth: 1,
-    padding: 8,
-    minWidth: 120,
+    borderColor: colors.border,
+    padding: 12,
+    minWidth: 140,
     margin: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
   nodeTitle: {
+    color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: "bold",
+    fontWeight: "600",
     textAlign: "center",
     marginBottom: 8,
-    paddingBottom: 4,
+    paddingBottom: 6,
     borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   nodeBody: {
     flexDirection: "row",
@@ -121,37 +101,43 @@ const styles = StyleSheet.create({
   inputsContainer: {
     flex: 1,
     alignItems: "flex-start",
+    paddingRight: 6,
   },
   outputsContainer: {
     flex: 1,
     alignItems: "flex-end",
+    paddingLeft: 6,
   },
-  portRow: {
+  socketRow: {
     flexDirection: "row",
     alignItems: "center",
     marginVertical: 4,
   },
-  port: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 1,
+  // FIXED: Replaced old styles with the "hardware jack" styles
+  socket: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  inputPort: {
-    backgroundColor: "#4CAF50",
-    marginRight: 4,
+  socketInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
   },
-  outputPort: {
-    backgroundColor: "#FF9800",
-    marginLeft: 4,
+  inputMargin: {
+    marginRight: 8,
   },
-  portLabel: {
-    fontSize: 10,
+  outputMargin: {
+    marginLeft: 8,
   },
-  inputLabel: {
-    textAlign: "left",
-  },
-  outputLabel: {
-    textAlign: "right",
+  socketLabel: {
+    color: colors.textSecondary,
+    fontSize: 12,
   },
 });

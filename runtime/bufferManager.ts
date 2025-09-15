@@ -1,9 +1,10 @@
 import { AudioContext, type AudioBuffer } from 'react-native-audio-api';
 
-
 const SAMPLE_URLS: Record<string, string> = {
-  speech: 'https://software-mansion.github.io/react-native-audio-api/audio/voice/example-voice-01.mp3',
-  music: 'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-03.mp3',
+  speech:
+    'https://software-mansion.github.io/react-native-audio-api/audio/voice/example-voice-01.mp3',
+  music:
+    'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-03.mp3',
 };
 
 const bufferCache: Map<string, AudioBuffer> = new Map();
@@ -27,7 +28,9 @@ export async function loadBufferForKey(
 
   const url = SAMPLE_URLS[key];
   if (!url) {
-    return Promise.reject(new Error(`No URL configured for sample key "${key}"`));
+    return Promise.reject(
+      new Error(`No URL configured for sample key "${key}"`),
+    );
   }
 
   const p = (async () => {
@@ -62,5 +65,7 @@ export async function ensureBuffersForNodes(
     }
   }
 
-  await Promise.all(Array.from(keys).map((k) => loadBufferForKey(audioContext, k)));
+  await Promise.all(
+    Array.from(keys).map((k) => loadBufferForKey(audioContext, k)),
+  );
 }

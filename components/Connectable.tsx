@@ -1,6 +1,6 @@
 import { useSetAtom } from "jotai";
 import { useContext } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   measure,
@@ -19,6 +19,12 @@ import {
   nodePositionsData,
   removeConnectionsAtom,
 } from "@/stores";
+
+// Color palette to match the node's theme
+const colors = {
+  background: '#2a2a2a',
+  accent: '#fd79a8', // Pink accent color
+};
 
 interface ConnectableProps {
   nodeId: string;
@@ -49,7 +55,6 @@ export function Connectable({ nodeId, socket, type }: ConnectableProps) {
   }, [tx, ty]);
 
   const longPressGesture = Gesture.LongPress().onStart(() => {
-    console.log(`Long press on ${socket.name}, removing connections`);
     runOnJS(removeConnections)(nodeId, socket.name);
   });
 
@@ -65,10 +70,8 @@ export function Connectable({ nodeId, socket, type }: ConnectableProps) {
     })
     .onUpdate((e) => {
       ghostConnectionEnd.value = { x: e.absoluteX, y: e.absoluteY };
-
       let closestNode: string | null = null;
       let closestDistance = Number.POSITIVE_INFINITY;
-
       for (
         const [otherId, otherPos] of Object.entries(nodePositionsData.value)
       ) {
@@ -78,13 +81,11 @@ export function Connectable({ nodeId, socket, type }: ConnectableProps) {
         const distance = Math.sqrt(
           (e.absoluteX - otherPos.x) ** 2 + (e.absoluteY - otherPos.y) ** 2,
         );
-
         if (distance < closestDistance) {
           closestDistance = distance;
           closestNode = otherId;
         }
       }
-
       if (closestNode && closestDistance < 50) {
         ghostConnectionSnapTarget.value = closestNode;
       } else {
@@ -96,14 +97,9 @@ export function Connectable({ nodeId, socket, type }: ConnectableProps) {
       ghostConnectionStart.value = null;
       ghostConnectionEnd.value = null;
       ghostConnectionSnapTarget.value = null;
-
-      const pos = {
-        pageX: e.absoluteX,
-        pageY: e.absoluteY,
-      };
+      const pos = { pageX: e.absoluteX, pageY: e.absoluteY };
       let closestNode: string | null = null;
       let closestDistance = Number.POSITIVE_INFINITY;
-
       for (
         const [otherId, otherPos] of Object.entries(nodePositionsData.value)
       ) {
@@ -113,13 +109,11 @@ export function Connectable({ nodeId, socket, type }: ConnectableProps) {
         const distance = Math.sqrt(
           (pos.pageX - otherPos.x) ** 2 + (pos.pageY - otherPos.y) ** 2,
         );
-
         if (distance < closestDistance) {
           closestDistance = distance;
           closestNode = otherId;
         }
       }
-
       if (closestNode) {
         const [targetNodeId, targetSocketName] = closestNode.split("-");
         if (closestDistance < 50) {
@@ -141,51 +135,28 @@ export function Connectable({ nodeId, socket, type }: ConnectableProps) {
 
   return (
     <GestureDetector gesture={combinedGesture}>
-      <Animated.View
-        style={[type === "input" ? styles.portRow : styles.invertedPortRow]}
-      >
-        <View
-          ref={ref}
-          style={[
-            styles.port,
-            type === "input" ? styles.inputPort : styles.outputPort,
-          ]}
-        />
-        <Text style={styles.portLabel}>{socket.name}</Text>
+      <Animated.View ref={ref} style={styles.socket}>
+        <View style={styles.socketInner} />
       </Animated.View>
     </GestureDetector>
   );
 }
 
 const styles = StyleSheet.create({
-  portRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 4,
-  },
-  invertedPortRow: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    marginVertical: 4,
-  },
-  port: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  socket: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.background,
     borderWidth: 2,
+    borderColor: colors.accent,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  inputPort: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#2E7D32",
-    marginRight: 6,
-  },
-  outputPort: {
-    backgroundColor: "#FF9800",
-    borderColor: "#E65100",
-    marginLeft: 6,
-  },
-  portLabel: {
-    color: "#ccc",
-    fontSize: 12,
+  socketInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent,
   },
 });

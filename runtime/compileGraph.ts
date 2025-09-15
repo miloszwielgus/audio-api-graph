@@ -1,8 +1,11 @@
-import { AudioContext, AudioParam, AudioScheduledSourceNode } from 'react-native-audio-api';
-import type { Connection } from "@/stores/connectionsAtoms";
-import type { GraphNode } from "@/stores/graphDataAtoms";
+import type { Connection } from '@/stores/connectionsAtoms';
+import type { GraphNode } from '@/stores/graphDataAtoms';
+import {
+  AudioContext,
+  AudioParam,
+  AudioScheduledSourceNode,
+} from 'react-native-audio-api';
 import * as bufferManager from './bufferManager';
-
 
 function toNumber(v: unknown): number | undefined {
   if (v === null || v === undefined) return undefined;
@@ -20,7 +23,7 @@ function toNumber(v: unknown): number | undefined {
 export function compileAudioGraph(
   nodes: Map<string, GraphNode>,
   connections: Connection[],
-  audioContext: AudioContext
+  audioContext: AudioContext,
 ) {
   let activeAudioNodes = new Map<string, any>();
   let cleanupTimeout: number | null = null;
@@ -29,7 +32,7 @@ export function compileAudioGraph(
     if (cleanupTimeout) {
       clearTimeout(cleanupTimeout);
     }
-    
+
     const stopTime = time === undefined ? audioContext.currentTime : time;
     const delayInMs = Math.max(0, (stopTime - audioContext.currentTime) * 1000);
 
@@ -38,7 +41,7 @@ export function compileAudioGraph(
         try {
           node.stop(stopTime);
         } catch (e) {
-          console.warn("Error stopping node:", e);
+          console.warn('Error stopping node:', e);
         }
       }
     }
@@ -60,17 +63,21 @@ export function compileAudioGraph(
       switch (node.type) {
         case 'Oscillator':
           audioNode = audioContext.createOscillator();
-          if (node.data.frequency) audioNode.frequency.value = node.data.frequency;
+          if (node.data.frequency)
+            audioNode.frequency.value = node.data.frequency;
           if (node.data.type) audioNode.type = node.data.type as OscillatorType;
           break;
         case 'Gain':
           audioNode = audioContext.createGain();
-          if (node.data.gain !== undefined) audioNode.gain.value = node.data.gain;
+          if (node.data.gain !== undefined)
+            audioNode.gain.value = node.data.gain;
           break;
         case 'BiquadFilter':
           audioNode = audioContext.createBiquadFilter();
-          if (node.data.type) audioNode.type = node.data.type as BiquadFilterType;
-          if (node.data.frequency) audioNode.frequency.value = node.data.frequency;
+          if (node.data.type)
+            audioNode.type = node.data.type as BiquadFilterType;
+          if (node.data.frequency)
+            audioNode.frequency.value = node.data.frequency;
           if (node.data.Q) audioNode.Q.value = node.data.Q;
           break;
         case 'StereoPanner':
@@ -86,16 +93,23 @@ export function compileAudioGraph(
               source.buffer = buf;
             } else {
               try {
-                const loaded = await bufferManager.loadBufferForKey(audioContext, sampleKey);
+                const loaded = await bufferManager.loadBufferForKey(
+                  audioContext,
+                  sampleKey,
+                );
                 source.buffer = loaded;
               } catch (e) {
-                console.warn(`Failed to load buffer for sample "${sampleKey}":`, e);
+                console.warn(
+                  `Failed to load buffer for sample "${sampleKey}":`,
+                  e,
+                );
               }
             }
           }
           const playback = toNumber(node.data.playbackRate);
           if (playback !== undefined) {
-            if ((source.playbackRate as AudioParam)) (source.playbackRate as AudioParam).value = playback;
+            if (source.playbackRate as AudioParam)
+              (source.playbackRate as AudioParam).value = playback;
           }
           audioNode = source;
           break;
@@ -133,4 +147,3 @@ export function compileAudioGraph(
 
   return { play, stop };
 }
-
