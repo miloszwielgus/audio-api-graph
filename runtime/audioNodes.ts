@@ -1,5 +1,10 @@
 import { registerNode } from './nodeRegistry.ts';
 
+const RADIO_STREAMS = {
+  'VOX FM': 'https://stream.radioparadise.com/aac-320', //not vox fm, taken from audio-api example app
+  'Radio Super Express': 'https://liveradio.timesa.pl/radiosuper-express/playlist.m3u8' //dummy link, does not work
+};
+
 registerNode({
   type: 'AudioDestination',
   inputs: [{ name: 'input', kind: 'audio' }],
@@ -62,6 +67,16 @@ registerNode({
   parameters: [
     { name: 'sample', type: 'selector', options: ['speech','music'], defaultValue: 'music' },
     { name: 'playbackRate', type: 'slider', min: 0.1, max: 4, step: 0.01, defaultValue: 1 },
+  ],
+  compute: () => ({}),
+});
+
+registerNode({
+  type: 'StreamerNode',
+  inputs: [],
+  outputs: [{ name: 'output', kind: 'audio' }],
+  parameters: [
+    { name: 'station', type: 'selector', options: Object.keys(RADIO_STREAMS), defaultValue: 'VOX FM' },
   ],
   compute: () => ({}),
 });

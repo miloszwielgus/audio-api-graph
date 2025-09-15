@@ -63,7 +63,8 @@ export function Connectable({ nodeId, socket, type }: ConnectableProps) {
     };
   }, [tx, ty, canvas?.translateX, canvas?.translateY, canvas?.scale]);
 
-  const longPressGesture = Gesture.LongPress().onStart(() => {
+const longPressGesture = Gesture.LongPress()
+  .onStart(() => {
     runOnJS(removeConnections)(nodeId, socket.name);
   });
 

@@ -1,9 +1,6 @@
 import { useAtomValue } from 'jotai';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  AudioParam,
-  AudioScheduledSourceNode,
-} from 'react-native-audio-api';
+import { AudioParam, AudioScheduledSourceNode } from 'react-native-audio-api';
 
 import * as bufferManager from '@/runtime/bufferManager';
 import {
@@ -25,6 +22,11 @@ function toNumber(v: unknown): number | undefined {
   }
   return undefined;
 }
+
+const RADIO_STREAMS = {
+  'VOX FM': 'https://stream.radioparadise.com/aac-320',
+  'Radio Super Express': 'https://liveradio.timesa.pl/radiosuper-express/playlist.m3u8'
+};
 
 export function useAudioEngine() {
   const audioContext = useAtomValue(audioContextAtom);
@@ -78,7 +80,7 @@ export function useAudioEngine() {
         try {
           node.stop(stopTime);
         } catch (_e) {
-          console.warn(_e)
+          console.warn(_e);
         }
       }
     }
@@ -158,6 +160,17 @@ export function useAudioEngine() {
               (source.playbackRate as AudioParam).value = playback;
           }
           audioNode = source;
+          break;
+        }
+        case 'StreamerNode': {
+          console.log(node.data.station)
+          const stationName = node.data.station as keyof typeof RADIO_STREAMS;
+          const streamUrl = RADIO_STREAMS[stationName];
+          if (streamUrl) {
+            const streamer = audioContext.createStreamer();
+            streamer.initialize(streamUrl); 
+            audioNode = streamer;
+          }
           break;
         }
         case 'AudioDestination':
