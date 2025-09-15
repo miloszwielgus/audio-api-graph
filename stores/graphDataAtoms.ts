@@ -116,11 +116,3 @@ export const nodesMapAtom = atom((get) => {
   }
   return map;
 });
-
-export const compiledGraphAtom = atom((get) => {
-  const nodes = get(nodesMapAtom);
-  const connections = get(connectionsAtom);
-  const audioContext = get(audioContextAtom);
-
-  return compileAudioGraph(nodes, connections, audioContext);
-});
