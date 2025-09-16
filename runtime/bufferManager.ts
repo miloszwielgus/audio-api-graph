@@ -40,7 +40,6 @@ export async function loadBufferForKey(
       throw new Error(`Failed to fetch audio at ${url}: ${response.status}`);
     }
     const arrayBuffer = await response.arrayBuffer();
-    // decodeAudioData is async in WebAudio; react-native-audio-api exposes similar API
     const decoded = await audioContext.decodeAudioData(arrayBuffer);
     bufferCache.set(key, decoded);
     loadPromises.delete(key);
@@ -48,6 +47,35 @@ export async function loadBufferForKey(
   })();
 
   loadPromises.set(key, p);
+  return p;
+}
+
+export async function loadBufferForUrl(
+  audioContext: AudioContext,
+  url: string,
+): Promise<AudioBuffer> {
+  if (bufferCache.has(url)) {
+    return bufferCache.get(url)!;
+  }
+
+  if (loadPromises.has(url)) {
+    return loadPromises.get(url)!;
+  }
+
+  const p = (async () => {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch audio at ${url}: ${response.status}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const decoded = await audioContext.decodeAudioData(arrayBuffer);
+
+    bufferCache.set(url, decoded);
+    loadPromises.delete(url);
+    return decoded;
+  })();
+
+  loadPromises.set(url, p);
   return p;
 }
 

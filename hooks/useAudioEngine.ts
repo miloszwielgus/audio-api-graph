@@ -134,35 +134,67 @@ export function useAudioEngine() {
           if (node.data.pan) audioNode.pan.value = node.data.pan;
           break;
         case 'AudioBufferSource': {
-          const source = audioContext.createBufferSource();
-          const sampleKey = node.data?.sample as string | undefined;
-          if (sampleKey) {
-            const buf = bufferManager.getCachedBuffer(sampleKey);
+          const connection = connections.find(
+            (c) => c.to.nodeId === nodeId && c.to.socket === 'sample',
+          );
+
+          let bufferIdentifier: string | undefined;
+          let isUrl = false;
+
+          if (connection) {
+            const sourceNode = nodesMap.get(connection.from.nodeId);
+            if (sourceNode) {
+              if (sourceNode.type === 'Music') {
+                bufferIdentifier = 'music';
+              } else if (sourceNode.type === 'Speech') {
+                bufferIdentifier = 'speech';
+              } else if (sourceNode.type === 'UrlMusic') {
+                bufferIdentifier = sourceNode.data.source as string;
+                isUrl = true;
+              }
+            }
+          }
+          console.log(bufferIdentifier)
+
+          if (bufferIdentifier) {
+            const source = audioContext.createBufferSource();
+
+            const buf = bufferManager.getCachedBuffer(bufferIdentifier);
             if (buf) {
               source.buffer = buf;
             } else {
               try {
-                const loaded = await bufferManager.loadBufferForKey(
-                  audioContext,
-                  sampleKey,
-                );
+                const loaded = isUrl
+                  ? await bufferManager.loadBufferForUrl(
+                      audioContext,
+                      bufferIdentifier,
+                    )
+                  : await bufferManager.loadBufferForKey(
+                      audioContext,
+                      bufferIdentifier,
+                    );
                 source.buffer = loaded;
               } catch (e) {
                 console.warn(
-                  `Failed to load buffer for sample "${sampleKey}":`,
+                  `Failed to load buffer for identifier "${bufferIdentifier}":`,
                   e,
                 );
               }
             }
+
+            const playback = toNumber(node.data.playbackRate);
+            if (playback !== undefined) {
+              if (source.playbackRate as AudioParam)
+                (source.playbackRate as AudioParam).value = playback;
+            }
+            audioNode = source;
           }
-          const playback = toNumber(node.data.playbackRate);
-          if (playback !== undefined) {
-            if (source.playbackRate as AudioParam)
-              (source.playbackRate as AudioParam).value = playback;
-          }
-          audioNode = source;
           break;
         }
+        case 'Music':
+        case 'UrlMusic':
+        case 'Speech':
+          break;
         case 'Streamer': {
           const streamUrl = node.data.url as string;
           if (streamUrl) {

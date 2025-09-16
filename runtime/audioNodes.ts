@@ -62,10 +62,9 @@ registerNode({
 
 registerNode({
   type: 'AudioBufferSource',
-  inputs: [],
+  inputs: [{name: 'sample', kind: 'param'}],
   outputs: [{ name: 'output', kind: 'audio' }],
-  parameters: [
-    { name: 'sample', type: 'selector', options: ['speech','music'], defaultValue: 'music' },
+    parameters: [
     { name: 'playbackRate', type: 'slider', min: 0.1, max: 4, step: 0.01, defaultValue: 1 },
   ],
   compute: () => ({}),
@@ -94,17 +93,27 @@ registerNode({
 registerNode({
   type: 'Music',
   inputs: [],
-  outputs: [{ name: 'output', kind: 'audio' }],
-  parameters: [
-  ],
-  compute: () => ({}),
+  outputs: [{ name: 'output', kind: 'param' }], 
+  compute: () => ({ output: 'music' }), 
 });
 
 registerNode({
   type: 'Speech',
   inputs: [],
-  outputs: [{ name: 'output', kind: 'audio' }],
+  outputs: [{ name: 'output', kind: 'param' }], 
+  compute: () => ({ output: 'speech' }), 
+});
+
+registerNode({
+  type: 'UrlMusic',
+  inputs: [],
+  outputs: [{ name: 'output', kind: 'param' }], 
   parameters: [
+    {
+      name: 'source',
+      type: 'url',
+      defaultValue: 'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-03.mp3'
+    }
   ],
-  compute: () => ({}),
+  compute: () => ({}), 
 });
