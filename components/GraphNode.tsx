@@ -1,7 +1,7 @@
 import Slider from '@react-native-community/slider';
 import { useAtom, useSetAtom } from 'jotai';
 import React, { useContext } from 'react';
-import { Pressable, StyleSheet, Text, View, TextInput } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -19,8 +19,7 @@ import { NodeTranslateCtx } from '@/components/NodeTranslateContext';
 import {
   NodeRegistry,
   SelectorParameter,
-  SliderParameter,
-  URLParameter
+  SliderParameter
 } from '@/runtime/nodeRegistry';
 import {
   removeNodeAtom,
@@ -226,6 +225,7 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
 
   return (
     <Animated.View
+    exiting={FadeOut}
       style={[styles.node, animatedStyle, { zIndex: topNode === id ? 2 : 1 }]}
     >
       <NodeTranslateCtx.Provider value={{ tx: positionX, ty: positionY }}>
@@ -241,7 +241,7 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
             onLongPress={handleLongPress}
             android_ripple={{ color: colors.surface2 }}
           >
-            {!isExpanded && (
+            {!isExpanded && numParameters > 0 && (
               <View style={styles.hintContainer}>
                 <Pressable
                   onPress={toggleExpandFromIcon}

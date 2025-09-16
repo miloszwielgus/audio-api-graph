@@ -3,7 +3,7 @@
     "name": "audio-api-graph",
     "slug": "audio-api-graph",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/images/icon.png",
     "scheme": "audioapigraph",
     "userInterfaceStyle": "automatic",

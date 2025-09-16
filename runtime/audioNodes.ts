@@ -75,12 +75,6 @@ registerNode({
   inputs: [],
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [
-    { 
-      name: 'station', 
-      type: 'selector', 
-      options: Object.keys(RADIO_STREAMS), 
-      defaultValue: 'VOX FM' 
-    },
     {
       name: 'url',
       type: 'url',

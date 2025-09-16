@@ -113,7 +113,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 4,
   },
-  // FIXED: Replaced old styles with the "hardware jack" styles
   socket: {
     width: 16,
     height: 16,
