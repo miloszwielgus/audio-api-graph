@@ -48,15 +48,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="fullscreen-shader"
-        options={{
-          title: "Audio Player",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="note" color={color} />
-          ),
-        }}
-      />
     </Tabs>
   );
 }

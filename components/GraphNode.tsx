@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons'; // ADDED
 import Slider from '@react-native-community/slider';
 import { useAtom, useSetAtom } from 'jotai';
 import React, { useContext } from 'react';
@@ -19,7 +20,7 @@ import { NodeTranslateCtx } from '@/components/NodeTranslateContext';
 import {
   NodeRegistry,
   SelectorParameter,
-  SliderParameter
+  SliderParameter,
 } from '@/runtime/nodeRegistry';
 import {
   removeNodeAtom,
@@ -43,13 +44,25 @@ const colors = {
   dangerText: '#ffb4b2',
   shadow: 'rgba(0, 0, 0, 0.5)',
 };
+
 interface GraphNodeViewProps {
   node: GraphNode;
 }
+
 const capitalize = (s: string) => {
   if (typeof s !== 'string' || s.length === 0) return '';
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
+
+const nodeIcons: {
+  [key: string]: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+} = {
+  AudioDestination: 'volume-high',
+  Speech: 'podcast',
+  Music: 'music-note'
+};
+const defaultNodeIcon = 'cogs'; // fallback icon
+
 const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
   const { id, data } = node;
   const updateNodeData = useSetAtom(updateNodeDataAtom);
@@ -96,9 +109,7 @@ const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
               />
             </View>
           );
-          
-        }
-        else if (param.type === 'url') {
+        } else if (param.type === 'url') {
           return (
             <View key={param.name} style={styles.param}>
               <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
@@ -109,7 +120,11 @@ const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
                   setDisplayValues((prev) => ({ ...prev, [param.name]: text }));
                 }}
                 onEndEditing={(e) => {
-                  updateNodeData({ nodeId: id, key: param.name, value: e.nativeEvent.text });
+                  updateNodeData({
+                    nodeId: id,
+                    key: param.name,
+                    value: e.nativeEvent.text,
+                  });
                 }}
                 placeholder="Enter stream URL (.m3u8)"
                 placeholderTextColor={colors.textHint}
@@ -118,8 +133,7 @@ const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
               />
             </View>
           );
-        } 
-        else {
+        } else {
           const s = param as SelectorParameter<string>;
           const items = (s.options ?? []).map((opt) => ({
             label: opt,
@@ -225,7 +239,7 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
 
   return (
     <Animated.View
-    exiting={FadeOut}
+      exiting={FadeOut}
       style={[styles.node, animatedStyle, { zIndex: topNode === id ? 2 : 1 }]}
     >
       <NodeTranslateCtx.Provider value={{ tx: positionX, ty: positionY }}>
@@ -241,38 +255,48 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
             onLongPress={handleLongPress}
             android_ripple={{ color: colors.surface2 }}
           >
-            {!isExpanded && numParameters > 0 && (
-              <View style={styles.hintContainer}>
-                <Pressable
-                  onPress={toggleExpandFromIcon}
-                  style={({ pressed }) => [
-                    styles.expandIcon,
-                    pressed && styles.expandIconPressed,
-                  ]}
-                  accessibilityLabel={
-                    numParameters > 0 ? 'Expand parameters' : 'No parameters'
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.expandIconText,
-                      isExpanded && styles.expandIconTextExpanded,
-                    ]}
-                  >
-                    {isExpanded ? '-' : '+'}
-                  </Text>
-                </Pressable>
-              </View>
-            )}
+            {numParameters > 0 ? (
+              <>
+                {!isExpanded && (
+                  <View style={styles.hintContainer}>
+                    <Pressable
+                      onPress={toggleExpandFromIcon}
+                      style={({ pressed }) => [
+                        styles.expandIcon,
+                        pressed && styles.expandIconPressed,
+                      ]}
+                      accessibilityLabel="Expand parameters"
+                    >
+                      <Text
+                        style={[
+                          styles.expandIconText,
+                          isExpanded && styles.expandIconTextExpanded,
+                        ]}
+                      >
+                        {isExpanded ? '-' : '+'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
 
-            {isExpanded && (
-              <Animated.View
-                style={styles.parametersContainer}
-                entering={FadeIn.duration(250).delay(50)}
-                exiting={FadeOut.duration(150)}
-              >
-                <ExpandedParametersView node={node} nodeImpl={nodeImpl} />
-              </Animated.View>
+                {isExpanded && (
+                  <Animated.View
+                    style={styles.parametersContainer}
+                    entering={FadeIn.duration(250).delay(50)}
+                    exiting={FadeOut.duration(150)}
+                  >
+                    <ExpandedParametersView node={node} nodeImpl={nodeImpl} />
+                  </Animated.View>
+                )}
+              </>
+            ) : (
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons
+                  name={nodeIcons[type] || defaultNodeIcon}
+                  size={36}
+                  color={colors.textHint}
+                />
+              </View>
             )}
           </Pressable>
 
@@ -356,6 +380,11 @@ const styles = StyleSheet.create({
   hintContainer: {
     alignItems: 'center',
     paddingVertical: 8,
+  },
+  iconContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   expandIcon: {
     width: 28,
@@ -479,7 +508,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 12,
   },
-    textInput: {
+  textInput: {
     backgroundColor: colors.surface2,
     color: colors.textPrimary,
     borderColor: colors.border,

@@ -1,71 +1,93 @@
-import { useRouter } from "expo-router";
-import { useSetAtom } from "jotai";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
-import { NodeCardDisplay } from "@/components/NodeCardDisplay";
-import { NodeRegistry } from "@/runtime/nodeRegistry";
-import { addNodeAtom } from "@/stores/graphDataAtoms";
+import { useRouter } from 'expo-router';
+import { useSetAtom } from 'jotai';
+import React from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { NodeCardDisplay } from '@/components/NodeCardDisplay';
+import { NodeRegistry } from '@/runtime/nodeRegistry';
+import { addNodeAtom } from '@/stores/graphDataAtoms';
+
+const nodeGroups = [
+  {
+    title: 'Sources',
+    nodes: ['Oscillator', 'AudioBufferSource', 'Streamer'],
+  },
+  {
+    title: 'Samples',
+    nodes: ['Music', 'Speech', 'UrlMusic'],
+  },
+  {
+    title: 'Effects',
+    nodes: ['BiquadFilter', 'StereoPanner', 'Gain'],
+  },
+];
 
 export default function NodeLibraryScreen() {
   const addNode = useSetAtom(addNodeAtom);
   const router = useRouter();
-  // Filter out 'input' and 'output' nodes as they are special
-  const availableNodes = Array.from(NodeRegistry.keys()).filter(
-    (type) => type !== "input" && type !== "output",
-  );
+
+  const availableNodes = new Set(NodeRegistry.keys());
+
+  const sections = nodeGroups
+    .map((group) => ({
+      title: group.title,
+      data: group.nodes.filter((node) => availableNodes.has(node)),
+    }))
+    .filter((group) => group.data.length > 0); 
 
   const handleAddNode = (type: string) => {
     addNode(type);
-    router.push("/"); // Navigate back to the Graph tab
+    router.push('/'); // Navigate back to the Graph tab
   };
 
-  const renderItem = ({ item }: { item: string }) => (
-    <Pressable
-      key={item}
-      onPress={() => handleAddNode(item)}
-    >
-      <NodeCardDisplay nodeType={item} />
-    </Pressable>
-  );
-
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={availableNodes}
-        renderItem={renderItem}
-        keyExtractor={(item) => item}
-        numColumns={2}
-        contentContainerStyle={styles.gridContainer}
-      />
-    </View>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContentContainer}
+    >
+      {sections.map((section) => (
+        <View key={section.title} style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+          <View style={styles.gridContainer}>
+            {section.data.map((nodeType) => (
+              <Pressable key={nodeType} onPress={() => handleAddNode(nodeType)}>
+                <NodeCardDisplay nodeType={nodeType} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ))}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: '#1a1d2c', 
+  },
+  scrollContentContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 16,
+  },
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#eef0ff',
+    marginLeft: 16,
+    marginBottom: 12,
   },
   gridContainer: {
-    justifyContent: "center",
-  },
-  nodeCard: {
-    flex: 1,
-    margin: 8,
-    padding: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 100,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  nodeText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textTransform: "capitalize",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start', 
   },
 });
