@@ -25,7 +25,8 @@ function toNumber(v: unknown): number | undefined {
 
 const RADIO_STREAMS = {
   'VOX FM': 'https://stream.radioparadise.com/aac-320',
-  'Radio Super Express': 'https://liveradio.timesa.pl/radiosuper-express/playlist.m3u8'
+  'Radio Super Express':
+    'https://liveradio.timesa.pl/radiosuper-express/playlist.m3u8',
 };
 
 export function useAudioEngine() {
@@ -162,14 +163,19 @@ export function useAudioEngine() {
           audioNode = source;
           break;
         }
-        case 'StreamerNode': {
-          console.log(node.data.station)
-          const stationName = node.data.station as keyof typeof RADIO_STREAMS;
-          const streamUrl = RADIO_STREAMS[stationName];
+        case 'Streamer': {
+          const streamUrl = node.data.url as string;
           if (streamUrl) {
-            const streamer = audioContext.createStreamer();
-            streamer.initialize(streamUrl); 
-            audioNode = streamer;
+            try {
+              const streamer = audioContext.createStreamer();
+              streamer.initialize(streamUrl);
+              audioNode = streamer;
+            } catch (error) {
+              console.error(
+                `Failed to initialize stream at ${streamUrl}:`,
+                error,
+              );
+            }
           }
           break;
         }

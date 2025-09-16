@@ -22,7 +22,13 @@ export type SelectorParameter<T extends string> = {
   defaultValue: T;
 };
 
-export type ParameterDefinition = SliderParameter | SelectorParameter<string>;
+export type URLParameter = {
+  type: 'url';
+  name: string;
+  defaultValue: string;
+}
+
+export type ParameterDefinition = SliderParameter | SelectorParameter<string> | URLParameter;
 
 export interface NodeImpl {
   /** unique key, e.g. "input", "add", "noise" … */

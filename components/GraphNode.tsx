@@ -1,7 +1,7 @@
 import Slider from '@react-native-community/slider';
 import { useAtom, useSetAtom } from 'jotai';
 import React, { useContext } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, TextInput } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -20,6 +20,7 @@ import {
   NodeRegistry,
   SelectorParameter,
   SliderParameter,
+  URLParameter
 } from '@/runtime/nodeRegistry';
 import {
   removeNodeAtom,
@@ -96,7 +97,30 @@ const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
               />
             </View>
           );
-        } else {
+          
+        }
+        else if (param.type === 'url') {
+          return (
+            <View key={param.name} style={styles.param}>
+              <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
+              <TextInput
+                style={styles.textInput}
+                value={String(displayValue)}
+                onChangeText={(text) => {
+                  setDisplayValues((prev) => ({ ...prev, [param.name]: text }));
+                }}
+                onEndEditing={(e) => {
+                  updateNodeData({ nodeId: id, key: param.name, value: e.nativeEvent.text });
+                }}
+                placeholder="Enter stream URL (.m3u8)"
+                placeholderTextColor={colors.textHint}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          );
+        } 
+        else {
           const s = param as SelectorParameter<string>;
           const items = (s.options ?? []).map((opt) => ({
             label: opt,
@@ -454,5 +478,17 @@ const styles = StyleSheet.create({
   dropdownListItemLabel: {
     color: colors.textPrimary,
     fontSize: 12,
+  },
+    textInput: {
+    backgroundColor: colors.surface2,
+    color: colors.textPrimary,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginTop: 4,
+    fontSize: 12,
+    fontFamily: 'monospace',
   },
 });
