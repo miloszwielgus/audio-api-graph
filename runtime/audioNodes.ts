@@ -1,9 +1,6 @@
+import { MUSIC_EXAMPLE, RADIO_EXAMPLE } from '@/constants/AudioSources';
 import { registerNode } from './nodeRegistry';
 
-const RADIO_STREAMS = {
-  'VOX FM': 'https://stream.radioparadise.com/aac-320', //not vox fm, taken from audio-api example app
-  'Radio Super Express': 'https://liveradio.timesa.pl/radiosuper-express/playlist.m3u8' //dummy link, does not work
-};
 
 registerNode({
   type: 'AudioDestination',
@@ -78,7 +75,7 @@ registerNode({
     {
       name: 'url',
       type: 'url',
-      defaultValue: RADIO_STREAMS['VOX FM'],
+      defaultValue: RADIO_EXAMPLE,
     }
   ],
   compute: () => ({}),
@@ -106,7 +103,7 @@ registerNode({
     {
       name: 'source',
       type: 'url',
-      defaultValue: 'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-03.mp3'
+      defaultValue: MUSIC_EXAMPLE
     }
   ],
   compute: () => ({}), 

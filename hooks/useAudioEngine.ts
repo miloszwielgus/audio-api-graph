@@ -23,12 +23,6 @@ function toNumber(v: unknown): number | undefined {
   return undefined;
 }
 
-const RADIO_STREAMS = {
-  'VOX FM': 'https://stream.radioparadise.com/aac-320',
-  'Radio Super Express':
-    'https://liveradio.timesa.pl/radiosuper-express/playlist.m3u8',
-};
-
 export function useAudioEngine() {
   const audioContext = useAtomValue(audioContextAtom);
   const nodesMap = useAtomValue(nodesMapAtom);

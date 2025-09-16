@@ -3,7 +3,6 @@ import { AudioContext } from 'react-native-audio-api';
 
 import { NodeRegistry } from "@/runtime/nodeRegistry";
 import "@/runtime/audioNodes"; 
-import { compileAudioGraph } from "@/runtime/compileGraph"; 
 import { connectionsAtom } from "./connectionsAtoms";
 
 export type NodeData = Record<string, number | string>;

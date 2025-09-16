@@ -1,10 +1,11 @@
 import { AudioContext, type AudioBuffer } from 'react-native-audio-api';
+import { MUSIC_EXAMPLE, SPEECH_EXAMPLE } from '@/constants/AudioSources';
 
 const SAMPLE_URLS: Record<string, string> = {
   speech:
-    'https://software-mansion.github.io/react-native-audio-api/audio/voice/example-voice-01.mp3',
+    SPEECH_EXAMPLE,
   music:
-    'https://software-mansion.github.io/react-native-audio-api/audio/music/example-music-03.mp3',
+    MUSIC_EXAMPLE
 };
 
 const bufferCache: Map<string, AudioBuffer> = new Map();
