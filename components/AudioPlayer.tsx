@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,11 +6,19 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSetAtom } from 'jotai';
 
 import { useAudioEngine } from '@/hooks/useAudioEngine';
+import { isPlayingAtom } from '@/stores/audioEngineAtoms';
 
 export function AudioPlayer() {
   const { isPlaying, isLoading, togglePlay } = useAudioEngine();
+
+  const setIsPlayingGlobally = useSetAtom(isPlayingAtom); 
+
+  useEffect(() => {
+    setIsPlayingGlobally(isPlaying);
+  }, [isPlaying, setIsPlayingGlobally]);
 
   return (
     <View style={styles.playerContainer}>

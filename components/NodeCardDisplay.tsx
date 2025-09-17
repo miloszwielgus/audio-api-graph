@@ -113,7 +113,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    borderRadius: 10,
+    borderTopEndRadius: 10,
+    borderTopLeftRadius: 10,
     height: HEADER_HEIGHT,
   },
   nodeTitle: {
