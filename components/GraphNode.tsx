@@ -1,8 +1,15 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons'; // ADDED
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useAtom, useSetAtom } from 'jotai';
 import React, { useContext } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -59,117 +66,149 @@ const nodeIcons: {
 } = {
   AudioDestination: 'volume-high',
   Speech: 'podcast',
-  Music: 'music-note'
+  Music: 'music-note',
 };
 const defaultNodeIcon = 'cogs'; // fallback icon
 
-const ExpandedParametersView = React.memo(({ node, nodeImpl }: any) => {
-  const { id, data } = node;
-  const updateNodeData = useSetAtom(updateNodeDataAtom);
-  const [openPicker, setOpenPicker] = React.useState<string | null>(null);
-  const [displayValues, setDisplayValues] =
-    React.useState<Record<string, any>>(data);
-  React.useEffect(() => {
-    setDisplayValues(data);
-  }, [data]);
-  return (
-    <View style={styles.parametersScrollView}>
-      {(nodeImpl.parameters ?? []).map((param: any, index: number) => {
-        const currentValue = data[param.name] ?? (param as any).defaultValue;
-        const displayValue =
-          displayValues[param.name] ?? (param as any).defaultValue;
-        if (param.type === 'slider') {
-          const s = param as SliderParameter;
-          const min = s.min ?? 0;
-          const max = s.max ?? 1;
-          const step = s.step ?? (Math.abs(max - min) / 100 || 0.01);
-          return (
-            <View key={param.name} style={styles.param}>
-              <View style={styles.paramHeader}>
-                <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
-                <Text style={styles.paramValue}>
-                  {Number(displayValue).toFixed(3)}
-                </Text>
+const ExpandedParametersView = React.memo(
+  ({ node, nodeImpl, onHeightChange }: any) => {
+    const { id, data } = node;
+    const updateNodeData = useSetAtom(updateNodeDataAtom);
+    const [openPicker, setOpenPicker] = React.useState<string | null>(null);
+    const [displayValues, setDisplayValues] =
+      React.useState<Record<string, any>>(data);
+
+    React.useEffect(() => {
+      setDisplayValues(data);
+    }, [data]);
+
+    const handleLayout = (event: LayoutChangeEvent) => {
+      const { height } = event.nativeEvent.layout;
+      const PADDING_BOTTOM = 15;
+      onHeightChange(height + PADDING_BOTTOM);
+    };
+
+    return (
+      <View style={styles.parametersScrollView} onLayout={handleLayout}>
+        {(nodeImpl.parameters ?? []).map((param: any, index: number) => {
+          const currentValue = data[param.name] ?? (param as any).defaultValue;
+          const displayValue =
+            displayValues[param.name] ?? (param as any).defaultValue;
+          if (param.type === 'slider') {
+            const s = param as SliderParameter;
+            const min = s.min ?? 0;
+            const max = s.max ?? 1;
+            const step = s.step ?? (Math.abs(max - min) / 100 || 0.01);
+            return (
+              <View key={param.name} style={styles.param}>
+                <View style={styles.paramHeader}>
+                  <Text style={styles.paramLabel}>
+                    {capitalize(param.name)}
+                  </Text>
+                  <Text style={styles.paramValue}>
+                    {Number(displayValue).toFixed(3)}
+                  </Text>
+                </View>
+                <Slider
+                  style={styles.slider}
+                  minimumValue={min}
+                  maximumValue={max}
+                  step={step}
+                  value={Number(currentValue)}
+                  onValueChange={(val) => {
+                    setDisplayValues((prev) => ({
+                      ...prev,
+                      [param.name]: val,
+                    }));
+                  }}
+                  onSlidingComplete={(val) => {
+                    updateNodeData({
+                      nodeId: id,
+                      key: param.name,
+                      value: val,
+                    });
+                  }}
+                  thumbTintColor={colors.accent2}
+                  minimumTrackTintColor={colors.accent}
+                  maximumTrackTintColor={colors.surface2}
+                />
               </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={min}
-                maximumValue={max}
-                step={step}
-                value={Number(currentValue)}
-                onValueChange={(val) => {
-                  setDisplayValues((prev) => ({ ...prev, [param.name]: val }));
-                }}
-                onSlidingComplete={(val) => {
-                  updateNodeData({ nodeId: id, key: param.name, value: val });
-                }}
-                thumbTintColor={colors.accent2}
-                minimumTrackTintColor={colors.accent}
-                maximumTrackTintColor={colors.surface2}
-              />
-            </View>
-          );
-        } else if (param.type === 'url') {
-          return (
-            <View key={param.name} style={styles.param}>
-              <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
-              <TextInput
-                style={styles.textInput}
-                value={String(displayValue)}
-                onChangeText={(text) => {
-                  setDisplayValues((prev) => ({ ...prev, [param.name]: text }));
-                }}
-                onEndEditing={(e) => {
-                  updateNodeData({
-                    nodeId: id,
-                    key: param.name,
-                    value: e.nativeEvent.text,
-                  });
-                }}
-                placeholder="Enter stream URL (.m3u8)"
-                placeholderTextColor={colors.textHint}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          );
-        } else {
-          const s = param as SelectorParameter<string>;
-          const items = (s.options ?? []).map((opt) => ({
-            label: opt,
-            value: opt,
-          }));
-          const isPickerOpen = openPicker === param.name;
-          return (
-            <View
-              key={param.name}
-              style={[styles.param, { zIndex: isPickerOpen ? 100 - index : 1 }]}
-            >
-              <Text style={styles.paramLabel}>{capitalize(param.name)}</Text>
-              <DropDownPicker
-                open={isPickerOpen}
-                value={currentValue}
-                items={items}
-                listMode="FLATLIST"
-                setOpen={() => setOpenPicker(isPickerOpen ? null : param.name)}
-                setValue={(callback) => {
-                  const value = callback(currentValue);
-                  updateNodeData({ nodeId: id, key: param.name, value });
-                }}
-                theme="DARK"
-                style={styles.dropdown}
-                containerStyle={styles.dropdownContainer}
-                dropDownContainerStyle={styles.dropdownList}
-                listItemLabelStyle={styles.dropdownListItemLabel}
-                placeholder="Select an item"
-              />
-            </View>
-          );
-        }
-      })}
-    </View>
-  );
-});
+            );
+          } else if (param.type === 'url') {
+            return (
+              <View key={param.name} style={styles.param}>
+                <Text style={styles.paramLabel}>
+                  {capitalize(param.name)}
+                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={String(displayValue)}
+                  multiline={true}
+                  onChangeText={(text) => {
+                    setDisplayValues((prev) => ({
+                      ...prev,
+                      [param.name]: text,
+                    }));
+                  }}
+                  onEndEditing={(e) => {
+                    updateNodeData({
+                      nodeId: id,
+                      key: param.name,
+                      value: e.nativeEvent.text,
+                    });
+                  }}
+                  placeholder="Enter stream URL (.m3u8)"
+                  placeholderTextColor={colors.textHint}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            );
+          } else {
+            const s = param as SelectorParameter<string>;
+            const items = (s.options ?? []).map((opt) => ({
+              label: opt,
+              value: opt,
+            }));
+            const isPickerOpen = openPicker === param.name;
+            return (
+              <View
+                key={param.name}
+                style={[
+                  styles.param,
+                  { zIndex: isPickerOpen ? 100 - index : 1 },
+                ]}
+              >
+                <Text style={styles.paramLabel}>
+                  {capitalize(param.name)}
+                </Text>
+                <DropDownPicker
+                  open={isPickerOpen}
+                  value={currentValue}
+                  items={items}
+                  listMode="FLATLIST"
+                  setOpen={() =>
+                    setOpenPicker(isPickerOpen ? null : param.name)
+                  }
+                  setValue={(callback) => {
+                    const value = callback(currentValue);
+                    updateNodeData({ nodeId: id, key: param.name, value });
+                  }}
+                  theme="DARK"
+                  style={styles.dropdown}
+                  containerStyle={styles.dropdownContainer}
+                  dropDownContainerStyle={styles.dropdownList}
+                  listItemLabelStyle={styles.dropdownListItemLabel}
+                  placeholder="Select an item"
+                />
+              </View>
+            );
+          }
+        })}
+      </View>
+    );
+  },
+);
 ExpandedParametersView.displayName = 'ExpandedParametersView';
 
 export function GraphNodeView({ node }: GraphNodeViewProps) {
@@ -199,7 +238,12 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
   const numParameters = nodeImpl.parameters?.length ?? 0;
   const BASE_HEIGHT = 100;
   const PARAM_HEIGHT = 65;
-  const expandedHeight = BASE_HEIGHT + numParameters * PARAM_HEIGHT;
+
+  const [parametersHeight, setParametersHeight] = React.useState(
+    numParameters * PARAM_HEIGHT,
+  );
+
+  const expandedHeight = BASE_HEIGHT + parametersHeight;
 
   const headerPanGesture = Gesture.Pan()
     .onStart(() => {
@@ -215,15 +259,17 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
       runOnJS(setNodePosition)({ id, x: positionX.value, y: positionY.value });
     });
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: positionX.value },
-      { translateY: positionY.value },
-    ],
-    height: withTiming(isExpanded ? expandedHeight : BASE_HEIGHT, {
-      duration: 250,
-    }),
-  }));
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: positionX.value },
+        { translateY: positionY.value },
+      ],
+      height: withTiming(isExpanded ? expandedHeight : BASE_HEIGHT, {
+        duration: 100,
+      }),
+    };
+  });
 
   const handleLongPress = () => {
     if (numParameters === 0) return;
@@ -285,7 +331,11 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
                     entering={FadeIn.duration(250).delay(50)}
                     exiting={FadeOut.duration(150)}
                   >
-                    <ExpandedParametersView node={node} nodeImpl={nodeImpl} />
+                    <ExpandedParametersView
+                      node={node}
+                      nodeImpl={nodeImpl}
+                      onHeightChange={setParametersHeight}
+                    />
                   </Animated.View>
                 )}
               </>
@@ -299,35 +349,35 @@ export function GraphNodeView({ node }: GraphNodeViewProps) {
               </View>
             )}
           </Pressable>
+        </View>
 
-          <View style={styles.socketsContainer}>
-            {(nodeImpl.inputs ?? []).map((input, index) => (
+        <View style={styles.socketsContainer}>
+          {(nodeImpl.inputs ?? []).map((input, index) => (
+            <View
+              key={`input-${id}-${input.name}`}
+              style={[
+                styles.socket,
+                styles.inputSocket,
+                { top: 40 + index * 25 },
+              ]}
+            >
+              <Connectable nodeId={id} socket={input} type="input" />
+            </View>
+          ))}
+
+          {node.type !== 'AudioDestination' &&
+            (nodeImpl.outputs ?? []).map((output, index) => (
               <View
-                key={`input-${id}-${input.name}`}
+                key={`output-${id}-${output.name}`}
                 style={[
                   styles.socket,
-                  styles.inputSocket,
+                  styles.outputSocket,
                   { top: 40 + index * 25 },
                 ]}
               >
-                <Connectable nodeId={id} socket={input} type="input" />
+                <Connectable nodeId={id} socket={output} type="output" />
               </View>
             ))}
-
-            {node.type !== 'AudioDestination' &&
-              (nodeImpl.outputs ?? []).map((output, index) => (
-                <View
-                  key={`output-${id}-${output.name}`}
-                  style={[
-                    styles.socket,
-                    styles.outputSocket,
-                    { top: 40 + index * 25 },
-                  ]}
-                >
-                  <Connectable nodeId={id} socket={output} type="output" />
-                </View>
-              ))}
-          </View>
         </View>
 
         {type !== 'AudioDestination' && (
@@ -356,15 +406,15 @@ const styles = StyleSheet.create({
   },
   nodeContent: {
     flex: 1,
+    borderRadius: 9, 
   },
   header: {
     backgroundColor: colors.background,
     paddingVertical: 8,
     paddingHorizontal: 10,
-    borderTopLeftRadius: 9,
-    borderTopRightRadius: 9,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    borderRadius: 10,
     alignItems: 'center',
   },
   nodeTitle: {
@@ -375,7 +425,6 @@ const styles = StyleSheet.create({
   bodyPressable: {
     flex: 1,
     justifyContent: 'center',
-    borderRadius: 9,
   },
   hintContainer: {
     alignItems: 'center',
@@ -465,9 +514,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 10,
   },
-  parametersScrollView: {
-    flex: 1,
-  },
+  parametersScrollView: {},
   param: {
     marginVertical: 4,
   },
@@ -515,9 +562,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 8,
     marginTop: 4,
     fontSize: 12,
     fontFamily: 'monospace',
+    textAlignVertical: 'top',
   },
 });

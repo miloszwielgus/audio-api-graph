@@ -148,8 +148,6 @@ export function useAudioEngine() {
               }
             }
           }
-          console.log(bufferIdentifier)
-
           if (bufferIdentifier) {
             const source = audioContext.createBufferSource();
 

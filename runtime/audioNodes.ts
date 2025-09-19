@@ -17,7 +17,7 @@ registerNode({
   ],
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [ 
-    { name: 'gain', type: 'slider', min: 0, max: 20, step: 0.01, defaultValue: 15 },
+    { name: 'gain', type: 'slider', min: 0, max:1, step: 0.01, defaultValue: 0.5 },
   ],
   compute: () => ({}),
 });
@@ -27,7 +27,7 @@ registerNode({
   inputs: [],
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [ 
-    { name: 'frequency', type: 'slider', min: 20, max: 3000, step: 10, defaultValue: 440 },
+    { name: 'frequency', type: 'slider', min: 20, max: 2000, step: 10, defaultValue: 440 },
     { name: 'type', type: 'selector', options: ['sine', 'square', 'sawtooth', 'triangle'], defaultValue: 'sine' },
   ],
   compute: () => ({}),
@@ -41,7 +41,7 @@ registerNode({
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [ 
     { name: 'type', type: 'selector', options: ['lowpass', 'highpass', 'bandpass', 'notch', 'allpass', 'peaking', 'lowshelf', 'highshelf'], defaultValue: 'lowpass' },
-    { name: 'frequency', type: 'slider', min: 20, max: 3000, step: 10, defaultValue: 440 },
+    { name: 'frequency', type: 'slider', min: 20, max: 2000, step: 10, defaultValue: 440 },
     { name: 'Q', type: 'slider', min: 0.1, max: 20, step: 0.1, defaultValue: 1 },
   ],
   compute: () => ({}),
@@ -62,7 +62,7 @@ registerNode({
   inputs: [{name: 'sample', kind: 'param'}],
   outputs: [{ name: 'output', kind: 'audio' }],
     parameters: [
-    { name: 'playbackRate', type: 'slider', min: 0.1, max: 4, step: 0.01, defaultValue: 1 },
+    { name: 'playbackRate', type: 'slider', min: 0.5, max: 2, step: 0.1, defaultValue: 1 },
   ],
   compute: () => ({}),
 });
@@ -73,7 +73,7 @@ registerNode({
   outputs: [{ name: 'output', kind: 'audio' }],
   parameters: [
     {
-      name: 'url',
+      name: 'source',
       type: 'url',
       defaultValue: RADIO_EXAMPLE,
     }

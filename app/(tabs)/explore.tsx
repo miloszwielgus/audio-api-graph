@@ -8,6 +8,8 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { NodeCardDisplay } from '@/components/NodeCardDisplay';
 import { NodeRegistry } from '@/runtime/nodeRegistry';
 import { addNodeAtom } from '@/stores/graphDataAtoms';
@@ -38,7 +40,7 @@ export default function NodeLibraryScreen() {
       title: group.title,
       data: group.nodes.filter((node) => availableNodes.has(node)),
     }))
-    .filter((group) => group.data.length > 0); 
+    .filter((group) => group.data.length > 0);
 
   const handleAddNode = (type: string) => {
     addNode(type);
@@ -46,30 +48,32 @@ export default function NodeLibraryScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContentContainer}
-    >
-      {sections.map((section) => (
-        <View key={section.title} style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-          <View style={styles.gridContainer}>
-            {section.data.map((nodeType) => (
-              <Pressable key={nodeType} onPress={() => handleAddNode(nodeType)}>
-                <NodeCardDisplay nodeType={nodeType} />
-              </Pressable>
-            ))}
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContentContainer}>
+        {sections.map((section) => (
+          <View key={section.title} style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.gridContainer}>
+              {section.data.map((nodeType) => (
+                <Pressable
+                  key={nodeType}
+                  onPress={() => handleAddNode(nodeType)}
+                >
+                  <NodeCardDisplay nodeType={nodeType} />
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
-      ))}
-    </ScrollView>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1d2c', 
+    backgroundColor: '#1a1d2c',
   },
   scrollContentContainer: {
     paddingHorizontal: 8,
@@ -88,6 +92,6 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start', 
+    justifyContent: 'flex-start',
   },
 });

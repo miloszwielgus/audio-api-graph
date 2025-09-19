@@ -7,21 +7,30 @@ import {
   View,
 } from 'react-native';
 import { useSetAtom } from 'jotai';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAudioEngine } from '@/hooks/useAudioEngine';
 import { isPlayingAtom } from '@/stores/audioEngineAtoms';
 
+const BOTTOM_OFFSET = 18;
+
 export function AudioPlayer() {
   const { isPlaying, isLoading, togglePlay } = useAudioEngine();
+  const insets = useSafeAreaInsets(); 
 
-  const setIsPlayingGlobally = useSetAtom(isPlayingAtom); 
+  const setIsPlayingGlobally = useSetAtom(isPlayingAtom);
 
   useEffect(() => {
     setIsPlayingGlobally(isPlaying);
   }, [isPlaying, setIsPlayingGlobally]);
 
   return (
-    <View style={styles.playerContainer}>
+    <View 
+      style={[
+        styles.playerContainer, 
+        { bottom: insets.bottom + BOTTOM_OFFSET }
+      ]}
+    >
       <Pressable
         onPress={togglePlay}
         style={({ pressed }) => [
@@ -45,7 +54,8 @@ export function AudioPlayer() {
 
 const styles = StyleSheet.create({
   playerContainer: {
-    bottom: 18,
+    position: 'absolute', 
+    alignSelf: 'center', 
     backgroundColor: 'rgba(28,28,30,0.85)',
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -57,10 +67,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 4,
     elevation: 6,
+    paddingBottom: 18
   },
   playButton: {
     backgroundColor: '#33488e',
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
     minWidth: 88,
