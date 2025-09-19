@@ -1,7 +1,10 @@
 # AudioAPI Graph 
 
 The project is a visual graph playground for the [react-native-audio-api](https://github.com/software-mansion/react-native-audio-api/). Allowing you to see how the audio graph is built.  
-[video showcasing the basic functionalities]
+
+
+https://github.com/user-attachments/assets/4b307ed5-34b1-44da-a2f0-f698c6a0a345
+
 
 ## Credits
 
@@ -51,11 +54,16 @@ The app features three categories of nodes:
 
 To run this example you only need the default nodes which pop up on the graph screen on app startup.  
 You just need to connect them (**Oscillator** -> **Gain** -> **AudioDestination**) and hit play.  
-Then you can press on the nodes with the '+' symbol to expand them and adjust their paramters to see how they affect the sound.  
-[screenshot]
+Then you can press on the nodes with the '+' symbol to expand them and adjust their paramters to see how they affect the sound.
+
+  
+<img width="2622" height="1206" alt="oscillator_example" src="https://github.com/user-attachments/assets/deec725d-cb1d-4789-a0e7-515744b7191c" />
+
 
 2. **BiquadFilter example**
 
 In this example we are going to use nodes from the **Node Library**. First you can delete the **Gain** and **Oscillator** nodes.  
 Then open the **Node Library** tab and get the **Music**, **AudioBufferSource** and **BiquadFilter** nodes. Now all that is left to do is connect them (**Music** -> **AudioBufferSource** -> **BiquadFilter** -> **AudioDestination**) and hit play. Now you can press on the nodes with the '+' symbol to expand them and adjust their paramters to see how they affect the sound.  
-[screenshot]
+
+  
+<img width="2622" height="1206" alt="biquad_example" src="https://github.com/user-attachments/assets/2dab71ff-8919-4dbe-b8d8-c2b7bc66b494" />
