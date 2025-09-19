@@ -1,50 +1,61 @@
-# Welcome to your Expo app 👋
+# AudioAPI Graph 
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The project is a visual graph playground for the [react-native-audio-api](https://github.com/software-mansion/react-native-audio-api/). Allowing you to see how the audio graph is built.  
+[video showcasing the basic functionalities]
 
-## Get started
+## Credits
 
-1. Install dependencies
+The implementation of the interactive graph canvas is based on the [typegpu-graph](https://github.com/reczkok/typegpu-graph/) project. Massive thanks to [reczkok](https://github.com/reczkok/)
 
-   ```bash
-   npm install
-   ```
+## Features
 
-2. Start the app
+- **Visual AudioApi Graph Editor:** Create, connect, and adjust parameters of the nodes
+- **Drag & Drop Interaface:** Use gestures to move nodes, the whole graph, zoom in/out on the canvas
+- **Audio Graph Compilation:** The graph is compiled into a single sound that you can play
 
-   ```bash
-   npx expo start
-   ```
+## Nodes 
 
-In the output, you'll find options to open the app in a
+The app features three categories of nodes: 
+- Sources
+   - [AudioBufferSourceNode](https://docs.swmansion.com/react-native-audio-api/docs/sources/audio-buffer-source-node)
+   - [OscillatorNode](https://docs.swmansion.com/react-native-audio-api/docs/sources/oscillator-node)
+   - [StreamerNode](https://docs.swmansion.com/react-native-audio-api/docs/sources/streamer-node)
+- Effects
+   - [BiquadFilterNode](https://docs.swmansion.com/react-native-audio-api/docs/effects/biquad-filter-node)
+   - [StereoPannerNode](https://docs.swmansion.com/react-native-audio-api/docs/effects/stereo-panner-node)
+   - [GainNode](https://docs.swmansion.com/react-native-audio-api/docs/effects/gain-node)
+- Samples - these are not actual [react-native-audio-api](https://github.com/software-mansion/react-native-audio-api/) nodes, they are added only for better visual representation of the graph, they all need to be connected to the [AudioBufferSourceNode](https://docs.swmansion.com/react-native-audio-api/docs/sources/audio-buffer-source-node)
+   - Music 
+   - Speech 
+   - UrlMusic - allows you to play a sound from an url
+- Destinations 
+   - [AudioDestinationNode](https://docs.swmansion.com/react-native-audio-api/docs/destinations/audio-destination-node)
+## Getting Started
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+1.  **Install dependencies:**
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+    ```bash
+    yarn install
+    ```
 
-## Get a fresh project
+2.  **Prebuild and start the Expo project:**
 
-When you're ready, run:
+    ```bash
+    npx expo prebuild
+    npx expo start
+    ```
 
-```bash
-npm run reset-project
-```
+## Play your first sound
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+1. **Oscillator example**. 
 
-## Learn more
+To run this example you only need the default nodes which pop up on the graph screen on app startup.  
+You just need to connect them (**Oscillator** -> **Gain** -> **AudioDestination**) and hit play.  
+Then you can press on the nodes with the '+' symbol to expand them and adjust their paramters to see how they affect the sound.  
+[screenshot]
 
-To learn more about developing your project with Expo, look at the following resources:
+2. **BiquadFilter example**
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+In this example we are going to use nodes from the **Node Library**. First you can delete the **Gain** and **Oscillator** nodes.  
+Then open the **Node Library** tab and get the **Music**, **AudioBufferSource** and **BiquadFilter** nodes. Now all that is left to do is connect them (**Music** -> **AudioBufferSource** -> **BiquadFilter** -> **AudioDestination**) and hit play. Now you can press on the nodes with the '+' symbol to expand them and adjust their paramters to see how they affect the sound.  
+[screenshot]
